@@ -44,6 +44,7 @@ void htserver_free(struct htserver *);
 typedef void (*freefunc)(void *ptr);
 
 void htreq_next(struct htreq *req);
+void htreq_send(struct htreq *req, const char *body);
 
 void htreq_not_found(struct htreq *req);
 void htreq_read_file(struct htreq *req, const char *path);

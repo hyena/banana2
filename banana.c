@@ -15,7 +15,7 @@ HANDLER(mw_foo) {
 
 HANDLER(notme) {
   printf("notme handler called.\n");
-  htreq_not_found(req);
+  htreq_send(req, "Welcome to Notme!");
 }
 
 int

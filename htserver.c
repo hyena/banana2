@@ -50,9 +50,12 @@ struct htreq {
   int        handler_count;
   int        handler_index;
   int        handler_subindex;
+  struct event *evloop;
   const char *uri;
   struct _mempair *pool;
 };
+
+void htreq_next_cb(evutil_socket_t socket _unused_, short flags _unused_, void *arg);
 
 void
 htreq_end(struct htreq *req) {
@@ -67,6 +70,9 @@ htreq_end(struct htreq *req) {
   }
   if (req->evrequest) {
     evhttp_request_free(req->evrequest);
+  }
+  if (req->evloop) {
+    event_free(req->evloop);
   }
   free(req);
 }
@@ -112,9 +118,31 @@ htreq_get(struct htreq *req, const char *name) {
 }
 
 void
+_htreq_set_headers(struct htreq *req) {
+  struct evkeyvalq *headers = evhttp_request_get_output_headers(req->evrequest);
+  // TODO: File mime type detection.
+  evhttp_add_header(headers, "Content-Type", "text/html; charset=UTF-8");
+  evhttp_add_header(headers, "Server", "Hello");
+}
+
+void
 htreq_not_found(struct htreq *req) {
+  _htreq_set_headers(req);
   evhttp_send_error(req->evrequest, HTTP_NOTFOUND, "Four oh four, file not found.");
   req->evrequest = NULL;
+  htreq_end(req);
+}
+
+void
+htreq_send(struct htreq *req, const char *body) {
+  _htreq_set_headers(req);
+  struct evbuffer *buffer;
+  buffer = evbuffer_new();
+  evbuffer_add(buffer, body, strlen(body));
+
+  evhttp_send_reply(req->evrequest, HTTP_OK, "OK", buffer);
+  req->evrequest = NULL;
+  evbuffer_free(buffer);
   htreq_end(req);
 }
 
@@ -140,9 +168,7 @@ htreq_read_file(struct htreq *req, const char *path) {
     close(fd);
   }
 
-  struct evkeyvalq *headers = evhttp_request_get_output_headers(req->evrequest);
-  evhttp_add_header(headers, "Content-Type", "text/html; charset=UTF-8");
-  evhttp_add_header(headers, "Server", "Hello");
+  _htreq_set_headers(req);
   
   evhttp_send_reply(req->evrequest, HTTP_OK, "OK", buffer);
   req->evrequest = NULL;
@@ -198,19 +224,27 @@ htreq_handle(struct evhttp_request *r, void *arg) {
   // Look for a matching path handler.
   for (cur = hts->handler; cur != NULL; cur = cur->next) {
     if (!strncmp(cur->path, uri, cur->pathlen)) {
-      if (req->handler_count > MAX_HANDLERS) {
-        printf("Too many handlers for uri %s?\n", req->uri);
-        htreq_not_found(req);
-        return;
-      }
-      req->handlers[req->handler_count++] = cur;
-      htreq_next(req);
-      return;
+      break;
     }
   }
 
-  // When all else fails, notfound it.
-  htreq_not_found(req);
+  if (cur) {
+    if (req->handler_count >= MAX_HANDLERS) {
+      printf("Too many handlers for uri %s?\n", req->uri);
+      htreq_not_found(req);
+      return;
+    }
+    req->handlers[req->handler_count++] = cur;
+    req->evloop = event_new(req->htserver->eventmachine,
+                            -1, // Not tied to a socket.
+                            0,  // Activate immediately.
+                            htreq_next_cb,
+                            (void *) req);
+    htreq_next(req);
+  } else {
+    // When all else fails, notfound it.
+    htreq_not_found(req);
+  }
 }
 
 void
@@ -242,13 +276,7 @@ void
 htreq_next(struct htreq *req) {
   // Push this request onto the next event loop.
   // (This has a bonus of removing most stack usage?)
-  struct event *nextloop;
-  nextloop = event_new(req->htserver->eventmachine,
-                       -1, // Not tied to a socket.
-                       0,  // Activate immediately.
-                       htreq_next_cb,
-                       (void *) req);
-  event_active(nextloop, 0, 0);
+  event_active(req->evloop, 0, 0);
 }
 
 void
