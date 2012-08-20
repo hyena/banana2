@@ -55,7 +55,7 @@ conf_read(const char *pathname) {
     }
     // We require key : value
     if (*i != ':') continue;
-    i++;
+    *(i++) = '\0';
 
     // Now we find value
     for (; *i && isspace(*i); i++);
@@ -71,11 +71,11 @@ conf_read(const char *pathname) {
     if (strlen(name) >= CONF_MAX_LEN || strlen(val) >= CONF_MAX_LEN) {
       continue;
     }
-    // printf("Read in '%s':'%s'\n", name, val);
     newconf = malloc(sizeof(struct config));
     memset(newconf, 0, sizeof(struct config));
     strncpy(newconf->name, name, CONF_MAX_LEN);
     strncpy(newconf->val, val, CONF_MAX_LEN);
+    // printf("Saving '%s:%s'\n", newconf->name, newconf->val);
     newconf->next = config;
     config = newconf;
   }
@@ -96,7 +96,8 @@ conf_free(struct config *tofree) {
 
 const char *
 conf_get(struct config *conf, const char *name, const char *def) {
-  while (conf && strcasecmp(conf->name, name)) {
+  while (conf) {
+    if (!strcasecmp(conf->name, name)) break;
     conf = conf->next;
   }
   if (conf) {
