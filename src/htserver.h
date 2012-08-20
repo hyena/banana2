@@ -16,10 +16,8 @@ struct htreq;
 struct htoptions {
   char *address;
   int   port;
-  int   verbose;
   char *http_signature;
   char *file_root;
-  char *file_index;
 };
 
 struct htserver *htserver_new(struct htoptions *opts);

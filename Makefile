@@ -5,7 +5,8 @@ CC=gcc
 LIBEV = ./libevent-2.0.19-stable
 
 PROG  = server
-CFLAGS=	-W -Wall -I. -pthread -g -lc -ggdb -Werror -D_GNU_SOURCE -I $(LIBEV)/include
+# TODO: Add back in -Werror
+CFLAGS=	-W -Wall -I. -Isrc -pthread -g -lc -ggdb -D_GNU_SOURCE -I $(LIBEV)/include
 LDFLAGS = -lc -ggdb -liconv -L $(LIBEV)/.libs -levent -levent_extra -levent_core -levent_openssl
 
 
@@ -13,17 +14,16 @@ all: $(PROG)
 
 include Makefile.depend
 
-C_FILES = htserver.c banana.c
-# C_FILES = api.c banana.c conf.c events.c mongoose.c sessions.c util.c users.c api_admin.c api_world.c file.c worlds.c net.c genapi.c logger.c api_user.c api_file.c strutil.c api_log.c mudparser.c
+C_FILES = src/htserver.c src/banana.c src/config.c
 # C_FILES = *.c
-O_FILES = $(patsubst %.c, build/%.o, $(C_FILES))
+O_FILES = $(patsubst src/%.c, build/%.o, $(C_FILES))
 
 $(PROG): $(O_FILES)
 	$(CC) $(LDFLAGS) -o $(PROG) $(O_FILES) $(LDFLAGS)
 
-build/%.o: %.c
+build/%.o: src/%.c
 	@mkdir -p build
-	$(CC) -c $(CFLAGS) $< -o $(patsubst %.c,build/%.o,$<)
+	$(CC) -c $(CFLAGS) $< -o $(patsubst src/%.c,build/%.o,$<)
 
 clean:
 	rm $(O_FILES) $(PROG)
