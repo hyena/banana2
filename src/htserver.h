@@ -14,10 +14,10 @@ struct htreq;
 
 // Libsrvr options
 struct htoptions {
-  char *address;
+  const char *address;
   int   port;
-  char *http_signature;
-  char *file_root;
+  const char *http_signature;
+  const char *file_root;
 };
 
 struct htserver *htserver_new(struct htoptions *opts);
@@ -51,6 +51,8 @@ void *htreq_calloc(struct htreq *req, const char *name, int size) __attribute_ma
 void  htreq_mset(struct htreq *req, const char *name, void *ptr, freefunc release);
 void  htreq_set(struct htreq *req, const char *name, void *ptr);
 void *htreq_get(struct htreq *req, const char *name) __attribute_malloc__;
+
+void  htreq_list_unfreed();
 
 void htreq_end(struct htreq *req);
 

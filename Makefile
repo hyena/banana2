@@ -60,8 +60,9 @@ genapi.c: $(API_FILES)
 depend:
 	touch Makefile.depend.in
 	makedepend -fMakefile.depend.in -pbuild/ -w10 -- $(CFLAGS) -- $(C_FILES) 2>/dev/null
-	grep -v ": /" Makefile.depend.in > Makefile.depend
-	rm Makefile.depend.in Makefile.depend.in.bak
+	grep -v ": /" Makefile.depend.in > Makefile.depend.2
+	sed s^src/^^ Makefile.depend.2 > Makefile.depend
+	rm Makefile.depend.in Makefile.depend.in.bak Makefile.depend.2
 
 vgrun:
 	valgrind ./$(PROG)

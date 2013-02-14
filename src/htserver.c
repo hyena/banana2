@@ -12,7 +12,9 @@
 #include <event2/buffer.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "htserver.h"
+#include "logger.h"
 
 #define _unused_ __attribute__ ((__unused__))
 
@@ -44,22 +46,65 @@ struct _mempair {
 };
 
 struct htreq {
+  char   path[PATH_MAX_LEN];
   struct htserver *htserver;
   struct evhttp_request *evrequest;
   struct _handler  *handlers[MAX_HANDLERS];
-  int        handler_count;
-  int        handler_index;
-  int        handler_subindex;
+  int    handler_count;
+  int    handler_index;
+  int    handler_subindex;
   struct event *evloop;
   const char *uri;
   struct _mempair *pool;
 };
+
+struct htreq_list {
+  struct htreq_list *next;
+  struct htreq *req;
+  time_t addtime;
+};
+
+static struct htreq_list *_htreq_track = NULL;
+
+void
+track_htreq(struct htreq *req) {
+  struct htreq_list *tracker =
+      htreq_calloc(req, "tracker", sizeof(struct htreq_list));
+  tracker->req = req;
+  tracker->next = _htreq_track;
+  tracker->addtime = time(NULL);
+  _htreq_track = tracker;
+}
+
+void
+untrack_htreq(struct htreq *req) {
+  struct htreq_list **ptr = &_htreq_track;
+  while (*ptr) {
+    if ((*ptr)->req == req) {
+      *ptr = (*ptr)->next;
+      break;
+    } else {
+      ptr = &(*ptr)->next;
+    }
+  }
+}
+
+void
+htreq_list_unfreed() {
+  struct htreq_list *ptr = _htreq_track;
+  time_t now = time(NULL);
+  while (ptr) {
+    slog("Unreleased htreq: %s (%d seconds old)", ptr->req->uri, now-ptr->addtime);
+    ptr = ptr->next;
+  }
+}
 
 void htreq_next_cb(evutil_socket_t socket _unused_, short flags _unused_, void *arg);
 
 void
 htreq_end(struct htreq *req) {
   struct _mempair *n;
+  untrack_htreq(req);
   while (req->pool) {
     n = req->pool;
     req->pool = n->next;
@@ -183,23 +228,22 @@ htreq_handle(struct evhttp_request *r, void *arg) {
   struct htserver *hts = (struct htserver *) arg;
   struct htreq *req = malloc(sizeof(struct htreq));
   memset(req, 0, sizeof(struct htreq));
-  req->uri = evhttp_request_get_uri(r);
   evhttp_request_own(r);
+  track_htreq(req);
+  req->uri = evhttp_request_get_uri(r);
   req->evrequest = r;
   req->htserver = hts;
   req->handler_count = 0;
   req->handler_index = 0;
   req->handler_subindex = 0;
-  const char *uri = req->uri;
-  char path[PATH_MAX_LEN];
+  snprintf(req->path, PATH_MAX_LEN, "%s/%s", hts->root, req->uri);
 
   // First, check for a static file. (Not directory)
   if (hts->root) {
     struct stat st;
-    snprintf(path, PATH_MAX_LEN, "%s/%s", hts->root, req->uri);
-    if (stat(path, &st) == 0) {
+    if (stat(req->path, &st) == 0) {
       if (!S_ISDIR(st.st_mode)) {
-        htreq_read_file(req, path);
+        htreq_read_file(req, req->path);
         return;
       }
     }
@@ -220,7 +264,7 @@ htreq_handle(struct evhttp_request *r, void *arg) {
 
   // Look for a matching path handler.
   for (cur = hts->handler; cur != NULL; cur = cur->next) {
-    if (!strncmp(cur->path, uri, cur->pathlen)) {
+    if (!strncmp(cur->path, req->uri, cur->pathlen)) {
       break;
     }
   }

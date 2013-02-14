@@ -12,9 +12,19 @@ HANDLER(mw_foo) {
   htreq_next(req);
 }
 
-HANDLER(notme) {
+HANDLER(page_notme) {
   slog("Notme called");
   htreq_send(req, "Welcome to Notme!");
+}
+
+HANDLER(mw_leak) {
+  slog("leak middleware called");
+}
+
+HANDLER(page_list) {
+  slog("List called");
+  htreq_list_unfreed();
+  htreq_send(req, "Printed!");
 }
 
 void
@@ -37,7 +47,9 @@ main(int argc _unused_, char **argv _unused_) {
   options.file_root = bconf_get("file_root", "public");
 
   htserver = htserver_new(&options);
-  htserver_bind(htserver, "/notme", mw_foo, mw_foo, notme);
+  htserver_bind(htserver, "/notme", mw_foo, mw_foo, page_notme);
+  htserver_bind(htserver, "/leak", mw_leak, mw_foo, page_notme);
+  htserver_bind(htserver, "/list", page_list);
   slog("Starting Banana HTTP Server on port %d", options.port);
   htserver_start(htserver);
 
