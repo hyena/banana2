@@ -193,13 +193,10 @@ htreq_handle(struct evhttp_request *r, void *arg) {
   const char *uri = req->uri;
   char path[PATH_MAX_LEN];
 
-  printf("Checking uri: '%s'\n", req->uri);
-
   // First, check for a static file. (Not directory)
   if (hts->root) {
     struct stat st;
     snprintf(path, PATH_MAX_LEN, "%s/%s", hts->root, req->uri);
-    printf("Checking path: '%s'\n", path);
     if (stat(path, &st) == 0) {
       if (!S_ISDIR(st.st_mode)) {
         htreq_read_file(req, path);
