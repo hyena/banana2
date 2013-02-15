@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 #include "banana.h"
 #include "htserver.h"
 #include "logger.h"
@@ -20,6 +21,11 @@
 #define _unused_ __attribute__ ((__unused__))
 
 #define MAX_HANDLERS 30
+#define SESSION_KEY_LENGTH 30
+
+const char *HT_COOKIE = "cookie";
+const char *HT_INTERNAL = "internal";
+const char *HT_OTHER = "other";
 
 struct _handler {
   const char *path;
@@ -40,6 +46,7 @@ struct htserver {
 
 #define PATH_MAX_LEN 1024
 struct _mempair {
+  const char *category;
   const char *name;
   void *ptr;
   freefunc release;
@@ -58,6 +65,7 @@ struct htreq {
   struct event *evloop;
   const char *uri;
   struct _mempair *pool;
+  struct ht_session *session;
 };
 
 struct htreq_list {
@@ -71,7 +79,7 @@ static struct htreq_list *_htreq_track = NULL;
 void
 track_htreq(struct htreq *req) {
   struct htreq_list *tracker =
-      htreq_calloc(req, "tracker", sizeof(struct htreq_list));
+      htreq_calloc(req, HT_INTERNAL, "tracker", sizeof(struct htreq_list));
   tracker->req = req;
   tracker->next = _htreq_track;
   tracker->addtime = time(NULL);
@@ -138,16 +146,24 @@ htreq_end(struct htreq *req) {
 }
 
 void *
-htreq_calloc(struct htreq *req, const char *name, int size) {
+htreq_strdup(struct htreq *req, const char *category, const char *name, const char *val) {
+  void *ptr = strdup(val);
+  htreq_mset(req, category, name, ptr, free);
+  return ptr;
+}
+
+void *
+htreq_calloc(struct htreq *req, const char *category, const char *name, int size) {
   void *ptr = malloc(size);
   memset(ptr, 0, size);
-  htreq_mset(req, name, ptr, free);
+  htreq_mset(req, category, name, ptr, free);
   return ptr;
 }
 
 void
-htreq_mset(struct htreq *req, const char *name, void *val, freefunc release) {
+htreq_mset(struct htreq *req, const char *category, const char *name, void *val, freefunc release) {
   struct _mempair *n = malloc(sizeof(struct _mempair));
+  n->category = category;
   n->name = name;
   n->next = req->pool;
   n->release = release;
@@ -155,21 +171,12 @@ htreq_mset(struct htreq *req, const char *name, void *val, freefunc release) {
   req->pool = n;
 }
 
-void
-htreq_set(struct htreq *req, const char *name, void *val) {
-  struct _mempair *n = malloc(sizeof(struct _mempair));
-  n->name = name;
-  n->next = req->pool;
-  n->release = NULL;
-  n->ptr = val;
-  req->pool = n;
-}
-
 void *
-htreq_get(struct htreq *req, const char *name) {
+htreq_get(struct htreq *req, const char *category, const char *name) {
   struct _mempair *n = req->pool;
   while (n) {
-    if (n->name && !strcmp(n->name, name)) {
+    if (n->category && !strcmp(category, n->category) &&
+        n->name && !strcmp(n->name, name)) {
       return n->ptr;
     }
     n = n->next;
@@ -178,11 +185,132 @@ htreq_get(struct htreq *req, const char *name) {
 }
 
 void
+htreq_cookie_set(struct htreq *req,
+                 const char *name, const char *value,
+                 const char *flags) {
+  struct evkeyvalq *headers = evhttp_request_get_output_headers(req->evrequest);
+  char cookieval[2048];
+  if (flags) {
+    snprintf(cookieval, 2048, "%s=%s; %s", name, value, flags);
+  } else {
+    snprintf(cookieval, 2048, "%s=%s; Path=/", name, value);
+  }
+  evhttp_add_header(headers, "Set-Cookie", cookieval);
+}
+
+void
 _htreq_set_headers(struct htreq *req) {
   struct evkeyvalq *headers = evhttp_request_get_output_headers(req->evrequest);
   // TODO: File mime type detection.
   evhttp_add_header(headers, "Content-Type", "text/html; charset=UTF-8");
   evhttp_add_header(headers, "Server", "Hello");
+}
+
+void
+_htreq_set_cookies(struct htreq *req) {
+  const char *cookies;
+  char *cval = NULL;
+  char *nptr, *vptr, *next;
+  struct evkeyvalq *headers = evhttp_request_get_input_headers(req->evrequest);
+  cookies = evhttp_find_header(headers, "Cookie");
+  if (cookies) {
+    cval = strdup(cookies);
+    nptr = cval;
+    while (nptr) {
+      while (isspace(*nptr)) nptr++;
+      if (!*nptr) break;
+      vptr = strchr(nptr, '=');
+      if (!vptr) break;
+      *(vptr++) = '\0';
+      next = strchr(vptr, ';');
+      if (next) *(next++) = '\0';
+      slog("Setting cookie %s = %s", nptr, vptr);
+      htreq_strdup(req, HT_COOKIE, nptr, vptr);
+      nptr = next;
+    }
+    free(cval);
+  }
+}
+
+struct ht_session {
+  char key[SESSION_KEY_LENGTH+1];
+  void *sessiondata;
+  time_t expiry;
+  struct ht_session *next;
+  htsession_handler onfree;
+};
+
+struct ht_session *session_head;
+
+void *
+htreq_session_get(struct htreq *req) {
+  if (req->session) {
+    return req->session->sessiondata;
+  } else {
+    slog("htreq_session_get called without a session set?");
+    return NULL;
+  }
+}
+
+void
+htreq_session_set(struct htreq *req, void *ptr, htsession_handler onfree) {
+  if (req->session) {
+    req->session->onfree = onfree;
+    req->session->sessiondata = ptr;
+  } else {
+    slog("htreq_session_set called without a session set?");
+  }
+}
+
+void
+htreq_check_sessions() {
+  struct ht_session **htsp = &session_head;
+  struct ht_session *hts;
+  time_t now = time(NULL);
+  while (htsp && *htsp) {
+    hts = *htsp;
+    if (hts->expiry < now) {
+      *htsp = hts->next;
+      slog("Expiring session %s", hts->key);
+      if (hts->onfree) {
+        hts->onfree(hts->sessiondata);
+      }
+      free(hts);
+    } else {
+      htsp = &(hts->next);
+    }
+  }
+}
+
+MIDDLEWARE(mw_session) {
+  const char *cookieval = htreq_get(req, HT_COOKIE, "sess");
+  int i;
+  time_t expiry = time(NULL) + SESSION_TIMEOUT;
+  struct ht_session *hts;
+  if (cookieval) {
+    for (hts = session_head; hts; hts = hts->next) {
+      if (!strcmp(hts->key, cookieval)) {
+        req->session = hts;
+        hts->expiry = expiry;
+        htreq_next(req);
+        return;
+      }
+    }
+  }
+
+  hts = malloc(sizeof(struct ht_session));
+  memset(hts, 0, sizeof(struct ht_session));
+  for (i = 0; i < SESSION_KEY_LENGTH; i++) {
+    hts->key[i] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"[rand()%62];
+  }
+  hts->key[i] = '\0';
+  slog("Creating session %s", hts->key);
+  hts->expiry = expiry;
+  hts->next = session_head;
+  session_head = hts;
+  htreq_cookie_set(req, "sess", hts->key, NULL);
+  req->session = hts;
+  htreq_next(req);
 }
 
 void
@@ -252,6 +380,7 @@ htreq_handle(struct evhttp_request *r, void *arg) {
   req->handler_index = 0;
   req->handler_subindex = 0;
   snprintf(req->path, PATH_MAX_LEN, "%s/%s", hts->root, req->uri);
+  _htreq_set_cookies(req);
 
   // First, check for a static file. (Not directory)
   if (hts->root) {
@@ -385,7 +514,7 @@ htserver_preprocessor_real(struct htserver *hts, ...) {
   h->count = 0;
   h->next = NULL;
 
-  va_start(args, NULL);
+  va_start(args, hts);
   while ((handler = va_arg(args, reqhandler)) != NULL) {
     h->funs[h->count++] = handler;
   }

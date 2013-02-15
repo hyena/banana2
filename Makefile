@@ -60,7 +60,7 @@ genapi.c: $(API_FILES)
 depend:
 	touch Makefile.depend.in
 	makedepend -fMakefile.depend.in -pbuild/ -w10 -- $(CFLAGS) -- $(C_FILES) 2>/dev/null
-	grep -v ": /" Makefile.depend.in > Makefile.depend.2
+	grep -v ": /" Makefile.depend.in | grep -v "./libevent" > Makefile.depend.2
 	sed s^src/^^ Makefile.depend.2 > Makefile.depend
 	rm Makefile.depend.in Makefile.depend.in.bak Makefile.depend.2
 
@@ -73,4 +73,4 @@ iconv:
 	cd libiconv-1.13.1 ; ./configure --prefix=/usr ; make ; sudo make install
 
 run:
-	./$(PROG)
+	LD_LIBRARY_PATH=$(LIBEV)/.libs ./$(PROG)

@@ -1,10 +1,5 @@
 # DO NOT DELETE
 
-build/htserver.o: ./libevent-2.0.19-stable/include/event2/event.h
-build/htserver.o: ./libevent-2.0.19-stable/include/event2/event-config.h
-build/htserver.o: ./libevent-2.0.19-stable/include/event2/util.h
-build/htserver.o: ./libevent-2.0.19-stable/include/event2/http.h
-build/htserver.o: ./libevent-2.0.19-stable/include/event2/buffer.h
 build/htserver.o: src/banana.h
 build/htserver.o: src/logger.h
 build/htserver.o: src/htserver.h
@@ -13,18 +8,10 @@ build/htserver.o: src/bconfig.h
 build/banana.o: src/banana.h
 build/banana.o: src/logger.h
 build/banana.o: src/htserver.h
-build/banana.o: ./libevent-2.0.19-stable/include/event2/event.h
-build/banana.o: ./libevent-2.0.19-stable/include/event2/event-config.h
-build/banana.o: ./libevent-2.0.19-stable/include/event2/util.h
-build/banana.o: ./libevent-2.0.19-stable/include/event2/http.h
-build/banana.o: ./libevent-2.0.19-stable/include/event2/buffer.h
 build/banana.o: src/config.h
 build/banana.o: src/bconfig.h
 build/banana.o: src/em.h
 build/config.o: src/config.h
 build/logger.o: src/logger.h
 build/em.o: src/em.h
-build/em.o: ./libevent-2.0.19-stable/include/event2/event.h
-build/em.o: ./libevent-2.0.19-stable/include/event2/event-config.h
-build/em.o: ./libevent-2.0.19-stable/include/event2/util.h
 build/em.o: src/logger.h

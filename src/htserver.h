@@ -29,7 +29,8 @@ struct htserver *htserver_new(struct htoptions *opts, struct event_base *em);
 void   htserver_free(struct htserver *);
 
 typedef void (*reqhandler)(struct htreq *req, const char *uri);
-#define HANDLER(x) void x(struct htreq *req _unused_, const char *uri _unused_)
+#define MIDDLEWARE(x) void x(struct htreq *req _unused_, const char *uri _unused_)
+#define PAGE(x) MIDDLEWARE(x)
 
 void htserver_bind_real(struct htserver *hts, const char *path, ...);
 #define htserver_bind(hts, path, args...) \
@@ -48,12 +49,27 @@ void htreq_send(struct htreq *req, const char *body);
 void htreq_not_found(struct htreq *req);
 void htreq_read_file(struct htreq *req, const char *path);
 
-void *htreq_calloc(struct htreq *req, const char *name, int size) __attribute_malloc__;
-void  htreq_mset(struct htreq *req, const char *name, void *ptr, freefunc release);
-void  htreq_set(struct htreq *req, const char *name, void *ptr);
-void *htreq_get(struct htreq *req, const char *name) __attribute_malloc__;
+extern const char *HT_COOKIE;
+extern const char *HT_INTERNAL;
+extern const char *HT_VAR;
+
+void *htreq_calloc(struct htreq *req, const char *category, const char *name, int size) __attribute_malloc__;
+void *htreq_strdup(struct htreq *req, const char *category, const char *name, const char *val) __attribute_malloc__;
+void  htreq_mset(struct htreq *req, const char *category, const char *name, void *ptr, freefunc release);
+#define htreq_set(req,cat,name,val) htreq_mset(ret, cat, name, val, NULL)
+void *htreq_get(struct htreq *req, const char *category, const char *name) __attribute_malloc__;
+
+void htreq_cookie_set(struct htreq *req, const char *name, const char *value, const char *flags);
+
+#define SESSION_HANDLER(x) void x(void *ptr)
+typedef void (*htsession_handler)(void *ptr);
+void *htreq_session_get(struct htreq *req) __attribute_malloc__;
+void  htreq_session_set(struct htreq *req, void *ptr, htsession_handler onfree);
+
+MIDDLEWARE(mw_session);
 
 void  htreq_check_unfreed();
+void  htreq_check_sessions();
 
 void htreq_end(struct htreq *req);
 

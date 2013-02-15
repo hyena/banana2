@@ -8,18 +8,29 @@
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;
 
-HANDLER(mw_leak) {
+MIDDLEWARE(mw_leak) {
   slog("leak middleware called");
 }
 
-HANDLER(mw_foo) {
+MIDDLEWARE(mw_foo) {
   slog("foo middleware called");
   htreq_next(req);
 }
 
-HANDLER(page_notme) {
+PAGE(page_notme) {
+  const char *foo = NULL;
   slog("Notme called");
+  foo = htreq_session_get(req);
+  if (foo) {
+    slog("Notme session found '%s'", foo);
+  }
   htreq_send(req, "Welcome to Notme!");
+}
+
+PAGE(page_foo) {
+  slog("foo called");
+  htreq_session_set(req, "Badonkadonk", NULL);
+  htreq_send(req, "Foo! Your session is set!");
 }
 
 void
@@ -44,11 +55,13 @@ main(int argc _unused_, char **argv _unused_) {
   em = em_init();
   // Add the http server to the eventmachine.
   htserver = htserver_new(&options, em);
-  htserver_bind(htserver, "/notme", mw_foo, mw_foo, page_notme);
+  htserver_bind(htserver, "/notme", mw_session, page_notme);
+  htserver_bind(htserver, "/foo", mw_session, page_foo);
   htserver_bind(htserver, "/leak", mw_leak, page_notme);
   slog("Starting Banana HTTP Server on port %d", options.port);
 
   em_loop("htreq_check_unfree", 5, htreq_check_unfreed, NULL);
+  em_loop("htreq_check_sessions", 5, htreq_check_unfreed, NULL);
 
   // Start eventmachine.
   em_start();

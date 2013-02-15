@@ -18,6 +18,7 @@ extern struct config *bconfig;
 
 // Print warnings when long poll lasts longer than this.
 #define LONGPOLL_TIMEOUT bconf_int("longpoll_timeout", 120)
+#define SESSION_TIMEOUT  (LONGPOLL_TIMEOUT + 20)
 
 #define _unused_ __attribute__ ((__unused__))
 
