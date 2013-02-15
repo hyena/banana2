@@ -1,0 +1,3 @@
+This is a rewrite, from the ground up, of Banana Mu-client, using libevent2.
+
+It will be single threaded, and somewhat more dynamic than banana-muclient.
