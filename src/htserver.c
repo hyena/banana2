@@ -224,7 +224,6 @@ _htreq_set_cookies(struct htreq *req) {
       *(vptr++) = '\0';
       next = strchr(vptr, ';');
       if (next) *(next++) = '\0';
-      slog("Setting cookie %s = %s", nptr, vptr);
       htreq_strdup(req, HT_COOKIE, nptr, vptr);
       nptr = next;
     }

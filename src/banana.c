@@ -61,7 +61,7 @@ main(int argc _unused_, char **argv _unused_) {
   slog("Starting Banana HTTP Server on port %d", options.port);
 
   em_loop("htreq_check_unfree", 5, htreq_check_unfreed, NULL);
-  em_loop("htreq_check_sessions", 5, htreq_check_unfreed, NULL);
+  em_loop("htreq_check_sessions", 5, htreq_check_sessions, NULL);
 
   // Start eventmachine.
   em_start();
