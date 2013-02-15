@@ -14,7 +14,7 @@ all: $(PROG)
 
 include Makefile.depend
 
-C_FILES = src/htserver.c src/banana.c src/config.c src/logger.c
+C_FILES = src/htserver.c src/banana.c src/config.c src/logger.c src/em.c
 # C_FILES = *.c
 O_FILES = $(patsubst src/%.c, build/%.o, $(C_FILES))
 

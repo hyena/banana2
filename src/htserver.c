@@ -310,7 +310,7 @@ htreq_next_cb(evutil_socket_t socket _unused_, short flags _unused_, void *arg) 
     req->handler_subindex++;
   }
 
-  fun(req);
+  fun(req, req->uri);
 }
 
 void
@@ -386,11 +386,11 @@ htserver_preprocessor_real(struct htserver *hts, ...) {
 }
 
 struct htserver *
-htserver_new(struct htoptions *opts) {
+htserver_new(struct htoptions *opts, struct event_base *eventmachine) {
   struct htserver *newht = malloc(sizeof(struct htserver));
   memset(newht, 0, sizeof(struct htserver));
 
-  newht->eventmachine = event_base_new();
+  newht->eventmachine = eventmachine;
   newht->server = evhttp_new(newht->eventmachine);
   evhttp_bind_socket(newht->server, opts->address, opts->port);
   if (opts->file_root) {
@@ -398,16 +398,6 @@ htserver_new(struct htoptions *opts) {
   }
   evhttp_set_gencb(newht->server, htreq_handle, newht);
   return newht;
-}
-
-void
-htserver_start(struct htserver *ht) {
-  event_base_dispatch(ht->eventmachine);
-}
-
-void
-htserver_stop(struct htserver *ht) {
-  event_base_loopbreak(ht->eventmachine);
 }
 
 void

@@ -18,3 +18,7 @@ build/banana.o: ./libevent-2.0.19-stable/include/event2/buffer.h
 build/banana.o: src/config.h
 build/config.o: src/config.h
 build/logger.o: src/logger.h
+build/em.o: src/em.h
+build/em.o: ./libevent-2.0.19-stable/include/event2/event.h
+build/em.o: ./libevent-2.0.19-stable/include/event2/event-config.h
+build/em.o: ./libevent-2.0.19-stable/include/event2/util.h

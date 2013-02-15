@@ -9,6 +9,7 @@
 #include <event2/http.h>
 #include <event2/buffer.h>
 
+#define _unused_ __attribute__ ((__unused__))
 struct htserver;
 struct htreq;
 
@@ -20,10 +21,11 @@ struct htoptions {
   const char *file_root;
 };
 
-struct htserver *htserver_new(struct htoptions *opts);
+struct htserver *htserver_new(struct htoptions *opts, struct event_base *em);
+void   htserver_free(struct htserver *);
 
-typedef void (*reqhandler)(struct htreq *req);
-#define HANDLER(x) void x(struct htreq *req)
+typedef void (*reqhandler)(struct htreq *req, const char *uri);
+#define HANDLER(x) void x(struct htreq *req _unused_, const char *uri _unused_)
 
 void htserver_bind_real(struct htserver *hts, const char *path, ...);
 #define htserver_bind(hts, path, args...) \
@@ -33,11 +35,6 @@ void htserver_preprocessor_real(struct htserver *hts, ...);
 #define htserver_preprocessor(hts, args...) \
             htserver_preprocessor_real(hts, ## args, NULL)
 
-// htserver_start doesn't return until htserver_stop is called
-// elsewhere.
-void htserver_start(struct htserver *);
-void htserver_stop(struct htserver *);
-void htserver_free(struct htserver *);
 
 typedef void (*freefunc)(void *ptr);
 
