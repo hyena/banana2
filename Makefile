@@ -2,11 +2,11 @@
 
 CC=gcc
 
-LIBEV = ./libevent-2.0.19-stable
+LIBEV = ./libevent-2.0.21-stable
 
 PROG  = server
 # TODO: Add back in -Werror
-CFLAGS=	-W -Wall -I. -Isrc -pthread -g -lc -ggdb -D_GNU_SOURCE -I $(LIBEV)/include
+CFLAGS=	-W -Wall -I. -Isrc -pthread -g -ggdb -D_GNU_SOURCE -I $(LIBEV)/include
 LDFLAGS = -lc -ggdb -liconv -L $(LIBEV)/.libs -levent -levent_extra -levent_core -levent_openssl
 
 

@@ -11,7 +11,6 @@
 #include <time.h>
 #include <stdarg.h>
 #include <pthread.h>
-#include <sys/epoll.h>
 #include <limits.h>
 #include <ctype.h>
 #include <errno.h>

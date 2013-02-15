@@ -4,4 +4,4 @@ users
 *.swp
 logs
 core
-libevent-2.0.19-stable
+libevent-2.*

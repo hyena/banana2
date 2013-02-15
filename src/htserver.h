@@ -2,6 +2,10 @@
 //
 #ifndef _MY_EVHTTPSERVER_H_
 #define _MY_EVHTTPSERVER_H_
+#ifndef __attribute_malloc__
+#define __attribute_malloc__ __attribute__((__malloc__))
+#endif
+
 #include <sys/stat.h>
 
 // Libevent header files
