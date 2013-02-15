@@ -8,6 +8,10 @@
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;
 
+HANDLER(mw_leak) {
+  slog("leak middleware called");
+}
+
 HANDLER(mw_foo) {
   slog("foo middleware called");
   htreq_next(req);
@@ -16,12 +20,6 @@ HANDLER(mw_foo) {
 HANDLER(page_notme) {
   slog("Notme called");
   htreq_send(req, "Welcome to Notme!");
-}
-
-HANDLER(page_list) {
-  slog("List called");
-  htreq_list_unfreed();
-  htreq_send(req, "Printed!");
 }
 
 void
@@ -38,17 +36,19 @@ main(int argc _unused_, char **argv _unused_) {
   logger_init(bconf_get("log_path", "logs/banana"));
   slog("Banana initializing . . .");
 
-  options.address = bconf_get("listen_host", "0.0.0.0");
-  options.port = bconf_int("listen_port", 4080);
-  options.http_signature = bconf_get("http_signature", "Banana MUSH Client");
-  options.file_root = bconf_get("file_root", "public");
+  options.address =        LISTEN_HOST;
+  options.port =           LISTEN_PORT;
+  options.http_signature = HTTP_SIGNATURE;
+  options.file_root =      HTTP_ROOT;
 
   em = em_init();
   // Add the http server to the eventmachine.
   htserver = htserver_new(&options, em);
   htserver_bind(htserver, "/notme", mw_foo, mw_foo, page_notme);
-  htserver_bind(htserver, "/list", page_list);
+  htserver_bind(htserver, "/leak", mw_leak, page_notme);
   slog("Starting Banana HTTP Server on port %d", options.port);
+
+  em_loop("htreq_check_unfree", 5, htreq_check_unfreed, NULL);
 
   // Start eventmachine.
   em_start();

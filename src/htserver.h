@@ -49,7 +49,7 @@ void  htreq_mset(struct htreq *req, const char *name, void *ptr, freefunc releas
 void  htreq_set(struct htreq *req, const char *name, void *ptr);
 void *htreq_get(struct htreq *req, const char *name) __attribute_malloc__;
 
-void  htreq_list_unfreed();
+void  htreq_check_unfreed();
 
 void htreq_end(struct htreq *req);
 

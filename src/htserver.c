@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "banana.h"
 #include "htserver.h"
 #include "logger.h"
 
@@ -53,6 +54,7 @@ struct htreq {
   int    handler_count;
   int    handler_index;
   int    handler_subindex;
+  int    longpoll;
   struct event *evloop;
   const char *uri;
   struct _mempair *pool;
@@ -90,11 +92,24 @@ untrack_htreq(struct htreq *req) {
 }
 
 void
-htreq_list_unfreed() {
+htreq_check_unfreed() {
   struct htreq_list *ptr = _htreq_track;
   time_t now = time(NULL);
+  time_t expiry = now - 20;
+  time_t longpoll_expiry = now - LONGPOLL_TIMEOUT - 20;
+  struct htreq *req;
+
   while (ptr) {
-    slog("Unreleased htreq: %s (%d seconds old)", ptr->req->uri, now-ptr->addtime);
+    req = ptr->req;
+    if (req->longpoll) {
+      if (ptr->addtime < longpoll_expiry) {
+        slog("WARN: Unreleased longpoll htreq: %s (%d seconds old) - Freeing", ptr->req->uri, now-ptr->addtime);
+        htreq_not_found(req);
+      }
+    } else if (ptr->addtime < expiry) {
+      slog("WARN: Unreleased htreq: %s (%d seconds old) - Freeing", ptr->req->uri, now-ptr->addtime);
+      htreq_not_found(req);
+    }
     ptr = ptr->next;
   }
 }

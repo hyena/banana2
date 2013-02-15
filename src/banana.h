@@ -10,10 +10,7 @@
 extern struct htserver *htserver;
 
 #include "config.h"
-extern struct config *bconfig;
-#define bconf_get(name,def) conf_get(bconfig, name, def)
-#define bconf_int(name,def) conf_int(bconfig, name, def)
-#define bconf_is(name,def)  conf_is(bconfig, name, def)
+#include "bconfig.h"
 
 #define _unused_ __attribute__ ((__unused__))
 
