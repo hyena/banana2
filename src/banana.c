@@ -3,6 +3,7 @@
  */
 
 #include "banana.h"
+#include "middleware.h"
 #include "em.h"
 
 struct htserver *htserver = NULL;
@@ -56,7 +57,7 @@ main(int argc _unused_, char **argv _unused_) {
   // Add the http server to the eventmachine.
   htserver = htserver_new(&options, em);
   htserver_bind(htserver, "/notme", mw_session, page_notme);
-  htserver_bind(htserver, "/foo", mw_session, page_foo);
+  htserver_bind(htserver, "/foo", mw_postonly, mw_session, page_foo);
   htserver_bind(htserver, "/leak", mw_leak, page_notme);
   slog("Starting Banana HTTP Server on port %d", options.port);
 

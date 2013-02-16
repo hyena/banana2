@@ -47,6 +47,7 @@ void htreq_next(struct htreq *req);
 void htreq_send(struct htreq *req, const char *body);
 
 void htreq_not_found(struct htreq *req);
+void htreq_not_allowed(struct htreq *req);
 void htreq_read_file(struct htreq *req, const char *path);
 
 extern const char *HT_COOKIE;
@@ -65,6 +66,7 @@ void htreq_cookie_set(struct htreq *req, const char *name, const char *value, co
 typedef void (*htsession_handler)(void *ptr);
 void *htreq_session_get(struct htreq *req) __attribute_malloc__;
 void  htreq_session_set(struct htreq *req, void *ptr, htsession_handler onfree);
+struct evhttp_request *htreq_ev(struct htreq *req);
 
 MIDDLEWARE(mw_session);
 

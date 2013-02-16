@@ -317,11 +317,27 @@ MIDDLEWARE(mw_session) {
   htreq_next(req);
 }
 
+struct evhttp_request *htreq_ev(struct htreq *req) {
+  return req->evrequest;
+}
+
 void
 htreq_not_found(struct htreq *req) {
   _htreq_set_headers(req);
-  evhttp_send_error(req->evrequest, HTTP_NOTFOUND, "Four oh four, file not found.");
-  req->evrequest = NULL;
+  if (req->evrequest) {
+    evhttp_send_error(req->evrequest, HTTP_NOTFOUND, "Four oh four, file not found.");
+    req->evrequest = NULL;
+  }
+  htreq_end(req);
+}
+
+void
+htreq_not_allowed(struct htreq *req) {
+  _htreq_set_headers(req);
+  if (req->evrequest) {
+    evhttp_send_error(req->evrequest, 403, "Four oh Three, you're not allowed.");
+    req->evrequest = NULL;
+  }
   htreq_end(req);
 }
 
