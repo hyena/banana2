@@ -83,6 +83,22 @@ conf_read(const char *pathname) {
   return config;
 }
 
+void
+conf_write(struct config *towrite, const char *pathname) {
+  FILE *fout;
+
+  fout = fopen(pathname, "w");
+  if (fout == NULL) {
+    return;
+  }
+
+  while (towrite) {
+    fprintf(fout, "%s:%s\n", towrite->name, towrite->val);
+    towrite = towrite->next;
+  }
+  fclose(fout);
+}
+
 struct config *
 conf_free(struct config *tofree) {
   struct config *t;

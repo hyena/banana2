@@ -13,6 +13,7 @@ struct config;
 
 struct config *conf_read(const char *pathname);
 struct config *conf_free(struct config *tofree);
+void conf_write(struct config *towrite, const char *pathname);
 
 /* Returns char * value - Don't free it. */
 const char *conf_get(struct config *conf, const char *name, const char *def);

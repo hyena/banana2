@@ -190,11 +190,13 @@ htreq_cookie_set(struct htreq *req,
                  const char *flags) {
   struct evkeyvalq *headers = evhttp_request_get_output_headers(req->evrequest);
   char cookieval[2048];
+  char *encoded = evhttp_encode_uri(name);
   if (flags) {
-    snprintf(cookieval, 2048, "%s=%s; %s", name, value, flags);
+    snprintf(cookieval, 2048, "%s=%s; %s", encoded, value, flags);
   } else {
-    snprintf(cookieval, 2048, "%s=%s; Path=/", name, value);
+    snprintf(cookieval, 2048, "%s=%s; Path=/", encoded, value);
   }
+  free(encoded);
   evhttp_add_header(headers, "Set-Cookie", cookieval);
 }
 
@@ -211,6 +213,7 @@ _htreq_set_cookies(struct htreq *req) {
   const char *cookies;
   char *cval = NULL;
   char *nptr, *vptr, *next;
+  char *decoded;
   struct evkeyvalq *headers = evhttp_request_get_input_headers(req->evrequest);
   cookies = evhttp_find_header(headers, "Cookie");
   if (cookies) {
@@ -224,7 +227,9 @@ _htreq_set_cookies(struct htreq *req) {
       *(vptr++) = '\0';
       next = strchr(vptr, ';');
       if (next) *(next++) = '\0';
-      htreq_strdup(req, HT_COOKIE, nptr, vptr);
+      decoded = evhttp_decode_uri(vptr);
+      htreq_strdup(req, HT_COOKIE, nptr, decoded);
+      free(decoded);
       nptr = next;
     }
     free(cval);
