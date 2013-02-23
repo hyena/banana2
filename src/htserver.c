@@ -228,6 +228,7 @@ _htreq_set_cookies(struct htreq *req) {
       next = strchr(vptr, ';');
       if (next) *(next++) = '\0';
       decoded = evhttp_decode_uri(vptr);
+      nptr = htreq_strdup(req, HT_INTERNAL, "cookiename", nptr);
       htreq_strdup(req, HT_COOKIE, nptr, decoded);
       free(decoded);
       nptr = next;

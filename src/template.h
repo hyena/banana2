@@ -8,5 +8,6 @@
 #include "htserver.h"
 
 const char *template_eval(const char *path, const char *filename, struct htreq *req);
+void template_cleanup();
 
 #endif /* _MY_EVHTTPSERVER_H_ */

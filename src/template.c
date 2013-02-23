@@ -103,7 +103,7 @@ struct rendertype renderers[] = {
 };
 
 struct ctemplate {
-  const char *path;
+  char *path;
   // body contains the entire file, but is mangled. All citems/etc point to
   // strings inside the body.
   // sval, contents, name should never be free()'d.
@@ -216,6 +216,8 @@ create_citems(struct build_citem **build, const char *end) {
     *build = bp->next;
     ci = malloc(sizeof(struct citem));
     memset(ci, 0, sizeof(struct citem));
+    *ptr = ci;
+    ptr = &(ci->next);
     if (bp->type == TYPE_STR) {
       ci->name = NULL;
       ci->contents = bp->ptr;
@@ -231,8 +233,6 @@ create_citems(struct build_citem **build, const char *end) {
         ci->cval = create_citems(build, subend);
       }
     }
-    *ptr = ci;
-    ptr = &(ci->next);
   }
   return ret;
 }
@@ -289,10 +289,11 @@ template_load(const char *path, const char *filename) {
     tpl->body = NULL;
   }
   tpl->mtime = sb.st_mtime;
-  tpl->body = malloc(sb.st_size);
+  tpl->body = malloc(sb.st_size + 1);
 
   fin = fopen(pathbuff, "r");
   fread(tpl->body, 1, sb.st_size, fin);
+  tpl->body[sb.st_size] = '\0';
   fclose(fin);
 
   // We now have the body.
@@ -312,7 +313,7 @@ RENDERER(render_template) {
 const char *
 template_eval(const char *path, const char *filename, struct htreq *req) {
   struct citem *items = template_load(path, filename);
-  struct render_item *ritems, *ri, **rptr;
+  struct render_item *ritems, *ri, *rn, **rptr;
   char *ret;
   int len;
   if (!items) {
@@ -327,8 +328,22 @@ template_eval(const char *path, const char *filename, struct htreq *req) {
   }
   len++; // \0;
   ret = htreq_calloc(req, HT_INTERNAL, "template_result", len);
-  for (ri = ritems; ri; ri = ri->next) {
+  for (ri = ritems; ri; ri = rn) {
+    rn = ri->next;
     strcat(ret, ri->val);
+    free(ri);
   }
   return ret;
+}
+
+void
+template_cleanup() {
+  struct ctemplate *tpl, *tpn;
+
+  for (tpl = tplhead; tpl; tpl=tpn) {
+    tpn = tpl->next;
+    citem_free(tpl->items);
+    free(tpl->path);
+    free(tpl);
+  }
 }

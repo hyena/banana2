@@ -65,7 +65,7 @@ depend:
 	rm Makefile.depend.in Makefile.depend.in.bak Makefile.depend.2
 
 vgrun:
-	valgrind ./$(PROG)
+	valgrind --leak-check=full --show-reachable=yes ./$(PROG)
 
 iconv:
 	wget http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.13.1.tar.gz

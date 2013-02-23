@@ -38,6 +38,11 @@ PAGE(page_foo) {
   htreq_send(req, "Foo! Your session is set!");
 }
 
+PAGE(page_quit) {
+  slog("quit called");
+  em_stop();
+}
+
 void
 banana_quit() {
   em_stop();
@@ -62,7 +67,7 @@ main(int argc _unused_, char **argv _unused_) {
   htserver = htserver_new(&options, em);
   htserver_bind(htserver, "/notme", mw_session, page_notme);
   htserver_bind(htserver, "/foo", mw_postonly, mw_session, page_foo);
-  htserver_bind(htserver, "/leak", mw_leak, page_notme);
+  htserver_bind(htserver, "/quit", page_quit);
   slog("Starting Banana HTTP Server on port %d", options.port);
 
   em_loop("htreq_check_unfree", 5, htreq_check_unfreed, NULL);
@@ -73,6 +78,7 @@ main(int argc _unused_, char **argv _unused_) {
 
   // Program control gets here when loopbreak is called.
   // Clean up.
+  template_cleanup();
   htserver_free(htserver);
   conf_free(bconfig);
   return 0;
