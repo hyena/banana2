@@ -5,6 +5,7 @@
 #include "banana.h"
 #include "middleware.h"
 #include "em.h"
+#include "template.h"
 
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;
@@ -20,12 +21,15 @@ MIDDLEWARE(mw_foo) {
 
 PAGE(page_notme) {
   const char *foo = NULL;
+  const char *tpl;
   slog("Notme called");
   foo = htreq_session_get(req);
   if (foo) {
     slog("Notme session found '%s'", foo);
   }
-  htreq_send(req, "Welcome to Notme!");
+  tpl = template_eval("tpl", "foo.html", req);
+  slog("template_eval returned '%s'", tpl);
+  htreq_send(req, tpl);
 }
 
 PAGE(page_foo) {
