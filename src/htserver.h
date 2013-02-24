@@ -52,11 +52,13 @@ void htreq_read_file(struct htreq *req, const char *path);
 
 extern const char *HT_COOKIE;
 extern const char *HT_INTERNAL;
+extern const char *HT_TEMP;
 extern const char *HT_VAR;
 extern const char *HT_TEMPLATE;
 
 void *htreq_calloc(struct htreq *req, const char *category, const char *name, int size) __attribute_malloc__;
 void *htreq_strdup(struct htreq *req, const char *category, const char *name, const char *val) __attribute_malloc__;
+const char *htreq_sprintf(struct htreq *req, const char *category, const char *name, const char *fmt, ...);
 void  htreq_mset(struct htreq *req, const char *category, const char *name, void *ptr, freefunc release);
 #define htreq_set(req,cat,name,val) htreq_mset(ret, cat, name, val, NULL)
 void *htreq_get(struct htreq *req, const char *category, const char *name) __attribute_malloc__;

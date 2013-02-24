@@ -7,7 +7,10 @@
 
 #include "htserver.h"
 
-const char *template_eval(const char *path, const char *filename, struct htreq *req);
+// template_find gets full path to a template using req
+// Since user templates override global templates.
+const char *template_find(const char *filename, struct htreq *req);
+const char *template_eval(const char *filename, struct htreq *req);
 void template_cleanup();
 
 #endif /* _MY_EVHTTPSERVER_H_ */

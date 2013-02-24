@@ -14,6 +14,7 @@
 
 struct citem;
 struct render_item;
+struct citem *template_load(const char *path);
 
 typedef void (*renderfunc)(struct htreq *req,
                            struct citem *item,
@@ -56,36 +57,54 @@ append(struct render_item ***ri, const char *val) {
   (*ri) = &(rn->next);
 }
 
-RENDERER(tpl_print) {
+#define getval(name) (name ? htreq_get(req, HT_TEMPLATE, name) : NULL)
+
+int
+parse_boolean(const char *val) {
+  if (!val) return 0;
+  if (!*val) return 0;
+  if (!strcmp(val, "0")) return 0;
+  if (!strcmp(val, "false")) return 0;
+  return 1;
+}
+
+RENDERER(tmpl_print) {
   append(ri, item->contents);
 }
 
-RENDERER(tpl_if) {
-  append(ri, "IF (");
-  append(ri, item->contents);
-  append(ri, ") {");
-  render_template(req, item->cval, ri);
-  append(ri, "}");
+RENDERER(tmpl_if) {
+  if (parse_boolean(getval(item->contents))) {
+    render_template(req, item->cval, ri);
+  }
 }
 
-RENDERER(tpl_unless) {
-  append(ri, "UNLESS (");
-  append(ri, item->contents);
-  append(ri, ") {");
-  render_template(req, item->cval, ri);
-  append(ri, "}");
+RENDERER(tmpl_unless) {
+  if (!parse_boolean(getval(item->contents))) {
+    render_template(req, item->cval, ri);
+  }
 }
 
-RENDERER(tpl_include) {
-  append(ri, "INCLUDE (");
-  append(ri, item->contents);
-  append(ri, ")");
+RENDERER(tmpl_include) {
+  const char *name = item->contents;
+  const char *path = template_find(name, req);
+  struct citem *items;
+  if (!path) {
+    append(ri, "[[INCLUDE: Unable to find file '");
+    append(ri, name);
+    append(ri, "'");
+  } else {
+    items = template_load(path);
+    render_template(req, items, ri);
+  }
 }
 
-RENDERER(tpl_eq) {
-  append(ri, "= (");
-  append(ri, item->contents);
-  append(ri, ")");
+RENDERER(tmpl_insert) {
+  const char *v = getval(item->contents);
+  if (v) {
+    append(ri, v);
+  } else {
+    append(ri, "(null)");
+  }
 }
 
 struct rendertype {
@@ -95,10 +114,10 @@ struct rendertype {
 };
 
 struct rendertype renderers[] = {
-  { "IF", "ENDIF", tpl_if },
-  { "UNLESS", "ENDUNLESS", tpl_unless },
-  { "INCLUDE", NULL, tpl_include },
-  { "=", NULL, tpl_eq },
+  { "IF", "ENDIF", tmpl_if },
+  { "UNLESS", "ENDUNLESS", tmpl_unless },
+  { "INCLUDE", NULL, tmpl_include },
+  { "=", NULL, tmpl_insert },
   { NULL, NULL, NULL }
 };
 
@@ -115,7 +134,7 @@ struct ctemplate {
 
 struct ctemplate *tplhead;
 
-struct citem err_citem = { tpl_print, NULL, NULL, NULL, NULL };
+struct citem err_citem = { tmpl_print, NULL, NULL, NULL, NULL };
 
 void
 citem_free(struct citem *ci) {
@@ -189,8 +208,17 @@ find_renderer(char *param, struct citem *ci) {
   char *p;
   ci->name = param;
   p = ci->name;
-  while (*p && !isspace(*p)) p++;
-  while (isspace(*p)) { *(p++) = '\0'; }
+  // Special case: [[=foo]]
+  if (ci->name[0] == '=') {
+    p++;
+    while (isspace(*p)) { *(p++) = '\0'; }
+    ci->renderer = tmpl_insert;
+    ci->contents = p;
+    return NULL;
+  } else {
+    while (*p && !isspace(*p)) p++;
+    while (isspace(*p)) { *(p++) = '\0'; }
+  }
   if (*p) {
     ci->contents = p;
   }
@@ -221,7 +249,7 @@ create_citems(struct build_citem **build, const char *end) {
     if (bp->type == TYPE_STR) {
       ci->name = NULL;
       ci->contents = bp->ptr;
-      ci->renderer = tpl_print;
+      ci->renderer = tmpl_print;
     } else {
       if (end && !strcasecmp(bp->ptr, end)) {
         break;
@@ -253,23 +281,21 @@ read_items(char *p) {
 }
 
 struct citem *
-template_load(const char *path, const char *filename) {
-  char pathbuff[2048];
+template_load(const char *path) {
   FILE *fin;
   struct ctemplate *tpl;
   struct stat sb;
   int ret;
-  snprintf(pathbuff, 2048, "%s/%s", path, filename);
-  ret = stat(pathbuff, &sb);
+  ret = stat(path, &sb);
 
   if (ret < 0) {
-    slog("Unable to render template '%s': '%s'", pathbuff, strerror(errno));
+    slog("Unable to render template '%s': '%s'", path, strerror(errno));
     err_citem.contents = strerror(errno);
     return &err_citem;
   }
   
   for (tpl = tplhead; tpl; tpl=tpl->next) {
-    if (!strcmp(tpl->path, pathbuff)) {
+    if (!strcmp(tpl->path, path)) {
       if (tpl->mtime == sb.st_mtime) {
         return tpl->items;
       }
@@ -281,7 +307,7 @@ template_load(const char *path, const char *filename) {
     memset(tpl, 0, sizeof(struct ctemplate));
     tpl->next = tplhead;
     tplhead = tpl;
-    tpl->path = strdup(pathbuff);
+    tpl->path = strdup(path);
   } else {
     citem_free(tpl->items);
     free(tpl->body);
@@ -291,7 +317,7 @@ template_load(const char *path, const char *filename) {
   tpl->mtime = sb.st_mtime;
   tpl->body = malloc(sb.st_size + 1);
 
-  fin = fopen(pathbuff, "r");
+  fin = fopen(path, "r");
   fread(tpl->body, 1, sb.st_size, fin);
   tpl->body[sb.st_size] = '\0';
   fclose(fin);
@@ -311,14 +337,45 @@ RENDERER(render_template) {
 }
 
 const char *
-template_eval(const char *path, const char *filename, struct htreq *req) {
-  struct citem *items = template_load(path, filename);
+template_find(const char *filename, struct htreq *req) {
+  const char *root = htreq_get(req, HT_INTERNAL, "template_path");
+  const char *ret = NULL;
+  struct stat sb;
+
+  if (root) {
+    ret = htreq_sprintf(req, HT_TEMP, HT_TEMP,
+                        "%s/%s", root, filename);
+    if (stat(ret, &sb) == 0) {
+      return ret;
+    }
+  }
+  root = TEMPLATE_ROOT;
+
+  if (root) {
+    ret = htreq_sprintf(req, HT_TEMP, HT_TEMP,
+                        "%s/%s", root, filename);
+    if (stat(ret, &sb) == 0) {
+      return ret;
+    }
+  }
+  return NULL;
+}
+
+const char *
+template_eval(const char *filename, struct htreq *req) {
+  const char *path = template_find(filename, req);
+  struct citem *items;
   struct render_item *ritems, *ri, *rn, **rptr;
   char *ret;
   int len;
+  if (!path) {
+    return htreq_sprintf(req, HT_TEMP, HT_TEMP,
+                         "[[Template '%s' cannot be found]]",
+                         filename);
+  }
+  items = template_load(path);
   if (!items) {
-    slog("template_eval: '%s/%s' is an empty file?", path, filename);
-    return htreq_strdup(req, HT_INTERNAL, "tplerror", "");
+    return "";
   }
   ritems = NULL;
   rptr = &ritems;
@@ -327,7 +384,7 @@ template_eval(const char *path, const char *filename, struct htreq *req) {
     len += strlen(ri->val);
   }
   len++; // \0;
-  ret = htreq_calloc(req, HT_INTERNAL, "template_result", len);
+  ret = htreq_calloc(req, HT_TEMP, HT_TEMP, len);
   for (ri = ritems; ri; ri = rn) {
     rn = ri->next;
     strcat(ret, ri->val);

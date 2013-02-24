@@ -10,15 +10,6 @@
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;
 
-MIDDLEWARE(mw_leak) {
-  slog("leak middleware called");
-}
-
-MIDDLEWARE(mw_foo) {
-  slog("foo middleware called");
-  htreq_next(req);
-}
-
 PAGE(page_notme) {
   const char *foo = NULL;
   const char *tpl;
@@ -27,8 +18,10 @@ PAGE(page_notme) {
   if (foo) {
     slog("Notme session found '%s'", foo);
   }
-  tpl = template_eval("tpl", "foo.html", req);
+  htreq_strdup(req, HT_TEMPLATE, "foo", "Wallaby Jones");
+  tpl = template_eval("foo.html", req);
   slog("template_eval returned '%s'", tpl);
+
   htreq_send(req, tpl);
 }
 

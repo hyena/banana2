@@ -25,6 +25,8 @@
 
 const char *HT_COOKIE = "cookie";
 const char *HT_INTERNAL = "internal";
+const char *HT_TEMP = "temp";
+const char *HT_TEMPLATE = "template";
 const char *HT_OTHER = "other";
 
 struct _handler {
@@ -148,6 +150,17 @@ htreq_end(struct htreq *req) {
 void *
 htreq_strdup(struct htreq *req, const char *category, const char *name, const char *val) {
   void *ptr = strdup(val);
+  htreq_mset(req, category, name, ptr, free);
+  return ptr;
+}
+
+const char *
+htreq_sprintf(struct htreq *req, const char *category, const char *name, const char *fmt, ...) {
+  va_list args;
+  char *ptr;
+  va_start(args, fmt);
+  vasprintf(&ptr, fmt, args);
+  va_end(args);
   htreq_mset(req, category, name, ptr, free);
   return ptr;
 }

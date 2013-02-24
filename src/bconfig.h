@@ -15,6 +15,7 @@ extern struct config *bconfig;
 #define LISTEN_PORT      bconf_int("listen_port", 4080)
 #define HTTP_SIGNATURE   bconf_get("http_signature", "Banana MUSH Client")
 #define HTTP_ROOT        bconf_get("file_root", "public")
+#define TEMPLATE_ROOT    bconf_get("template_root", "templates")
 
 // Print warnings when long poll lasts longer than this.
 #define LONGPOLL_TIMEOUT bconf_int("longpoll_timeout", 120)
