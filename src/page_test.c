@@ -2,10 +2,8 @@
  *
  */
 
-#include "banana.h"
-#include "middleware.h"
+#include "page.h"
 #include "em.h"
-#include "template.h"
 
 PAGE(page_notme, "/notme", mw_session) {
   const char *foo = NULL;

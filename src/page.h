@@ -7,6 +7,9 @@
 #define __attribute_malloc__ __attribute__((__malloc__))
 #endif
 
-MIDDLEWARE(mw_postonly);
+#include "htserver.h"
+#include "banana.h"
+#include "template.h"
+#include "_middleware.h"
 
 #endif /* _MY_EVHTTPSERVER_H_ */

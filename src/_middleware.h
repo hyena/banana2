@@ -1,0 +1,1 @@
+MIDDLEWARE(mw_postonly);

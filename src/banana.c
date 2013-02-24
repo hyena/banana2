@@ -3,8 +3,8 @@
  */
 
 #include "banana.h"
-#include "middleware.h"
 #include "em.h"
+#include "_middleware.h"
 #include "template.h"
 
 struct htserver *htserver = NULL;

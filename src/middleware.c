@@ -18,7 +18,7 @@
 #include "banana.h"
 #include "htserver.h"
 #include "logger.h"
-#include "middleware.h"
+#include "page.h"
 
 MIDDLEWARE(mw_postonly) {
   if (htreq_ev(req)->type == EVHTTP_REQ_POST) {

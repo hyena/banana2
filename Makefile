@@ -30,6 +30,8 @@ C_FILES = \
 # C_FILES = *.c
 O_FILES = $(patsubst src/%.c, build/%.o, $(C_FILES))
 
+GEN_FILES = src/_middleware.h src/_page_defs.h src/_page_gen.h
+
 $(PROG): $(O_FILES)
 	$(CC) $(LDFLAGS) -o $(PROG) $(O_FILES) $(LDFLAGS)
 
@@ -38,8 +40,15 @@ build/%.o: src/%.c
 	$(CC) -c $(CFLAGS) $< -o $(patsubst src/%.c,build/%.o,$<)
 
 clean:
-	rm $(O_FILES) $(PROG) src/_page_gen.h src/_page_defs.h
+	rm $(O_FILES) $(PROG) $(GEN_FILES)
 
+src/_middleware.h: $(PAGE_FILES) src/middleware.c
+	grep -h MIDDLEWARE src/middleware.c $(PAGE_FILES) | perl -pi -e "s/MIDDLEWARE\((.*)\).*/MIDDLEWARE(\1);/" > src/_middleware.h
+
+src/page.h: src/_middleware.h
+	touch src/page.h
+
+src/banana.c: src/_middleware.h
 src/banana.c: src/_page_defs.h
 src/banana.c: src/_page_gen.h
 src/_page_defs.h: $(PAGE_FILES)
