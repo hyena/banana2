@@ -10,35 +10,16 @@
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;
 
-PAGE(page_notme) {
-  const char *foo = NULL;
-  const char *tpl;
-  slog("Notme called");
-  foo = htreq_session_get(req);
-  if (foo) {
-    slog("Notme session found '%s'", foo);
-  }
-  htreq_strdup(req, HT_TEMPLATE, "foo", "Wallaby Jones");
-  tpl = template_eval("foo.html", req);
-  slog("template_eval returned '%s'", tpl);
-
-  htreq_send(req, tpl);
-}
-
-PAGE(page_foo) {
-  slog("foo called");
-  htreq_session_set(req, "Badonkadonk", NULL);
-  htreq_send(req, "Foo! Your session is set!");
-}
-
-PAGE(page_quit) {
-  slog("quit called");
-  em_stop();
-}
-
 void
 banana_quit() {
   em_stop();
+}
+
+#include "_page_defs.h"
+
+void
+bind_pages() {
+#include "_page_gen.h"
 }
 
 int
@@ -58,9 +39,9 @@ main(int argc _unused_, char **argv _unused_) {
   em = em_init();
   // Add the http server to the eventmachine.
   htserver = htserver_new(&options, em);
-  htserver_bind(htserver, "/notme", mw_session, page_notme);
-  htserver_bind(htserver, "/foo", mw_postonly, mw_session, page_foo);
-  htserver_bind(htserver, "/quit", page_quit);
+
+  bind_pages();
+
   slog("Starting Banana HTTP Server on port %d", options.port);
 
   em_loop("htreq_check_unfree", 5, htreq_check_unfreed, NULL);

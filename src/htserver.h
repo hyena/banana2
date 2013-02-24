@@ -30,7 +30,7 @@ void   htserver_free(struct htserver *);
 
 typedef void (*reqhandler)(struct htreq *req, const char *uri);
 #define MIDDLEWARE(x) void x(struct htreq *req _unused_, const char *uri _unused_)
-#define PAGE(x) MIDDLEWARE(x)
+#define PAGE(x, path, ...) MIDDLEWARE(x)
 
 void htserver_bind_real(struct htserver *hts, const char *path, ...);
 #define htserver_bind(hts, path, args...) \

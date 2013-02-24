@@ -14,7 +14,19 @@ all: $(PROG)
 
 include Makefile.depend
 
-C_FILES = src/htserver.c src/banana.c src/config.c src/logger.c src/em.c src/middleware.c src/template.c
+PAGE_FILES = \
+    src/page_test.c
+
+C_FILES = \
+    src/htserver.c \
+    src/config.c \
+    src/logger.c \
+    src/em.c \
+    src/middleware.c \
+    src/template.c \
+    src/banana.c \
+    $(PAGE_FILES)
+
 # C_FILES = *.c
 O_FILES = $(patsubst src/%.c, build/%.o, $(C_FILES))
 
@@ -26,7 +38,14 @@ build/%.o: src/%.c
 	$(CC) -c $(CFLAGS) $< -o $(patsubst src/%.c,build/%.o,$<)
 
 clean:
-	rm $(O_FILES) $(PROG)
+	rm $(O_FILES) $(PROG) src/_page_gen.h src/_page_defs.h
+
+src/banana.c: src/_page_defs.h
+src/banana.c: src/_page_gen.h
+src/_page_defs.h: $(PAGE_FILES)
+	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((.*)\).*/PAGE(\1);/" > src/_page_defs.h
+src/_page_gen.h: $(PAGE_FILES)
+	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((\w+), (.*)\).*/htserver_bind(htserver, \2, \1);/" > src/_page_gen.h
 
 API_FILES = $(filter api_%.c,$(C_FILES))
 

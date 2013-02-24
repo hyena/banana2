@@ -29,3 +29,11 @@ build/template.o: src/htserver.h
 build/template.o: src/config.h
 build/template.o: src/bconfig.h
 build/template.o: src/template.h
+build/page_test.o: src/banana.h
+build/page_test.o: src/logger.h
+build/page_test.o: src/htserver.h
+build/page_test.o: src/config.h
+build/page_test.o: src/bconfig.h
+build/page_test.o: src/middleware.h
+build/page_test.o: src/em.h
+build/page_test.o: src/template.h
