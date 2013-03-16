@@ -26,6 +26,7 @@ int
 main(int argc _unused_, char **argv _unused_) {
   struct htoptions options;
   struct event_base *em;
+  const char *opt_tvars = NULL;
   bconfig = conf_read("config.txt");
 
   logger_init(bconf_get("log_path", "logs/banana"));
@@ -35,6 +36,9 @@ main(int argc _unused_, char **argv _unused_) {
   options.port =           LISTEN_PORT;
   options.http_signature = HTTP_SIGNATURE;
   options.file_root =      HTTP_ROOT;
+
+  opt_tvars = bconf_get("template_vars", "tvars.txt");
+  templatevars = conf_read(opt_tvars);
 
   em = em_init();
   // Add the http server to the eventmachine.

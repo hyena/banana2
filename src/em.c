@@ -48,7 +48,6 @@ loop_cb(evutil_socket_t fd __attribute__ ((__unused__)),
         short what __attribute__ ((__unused__)),
         void *arg) {
   struct thandler *thandler = (struct thandler *) arg;
-  slog("Ticking loop %s", thandler->name);
   if (thandler->handler) {
     thandler->handler(thandler->ptr);
   }

@@ -13,4 +13,7 @@ const char *template_find(const char *filename, struct htreq *req);
 const char *template_eval(const char *filename, struct htreq *req);
 void template_cleanup();
 
+// templatevars
+extern struct config *templatevars;
+
 #endif /* _MY_EVHTTPSERVER_H_ */

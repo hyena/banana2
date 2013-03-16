@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include "banana.h"
 #include "htserver.h"
+#include "page.h"
 #include "logger.h"
 
 #define _unused_ __attribute__ ((__unused__))
@@ -214,11 +215,14 @@ htreq_cookie_set(struct htreq *req,
 }
 
 void
-_htreq_set_headers(struct htreq *req) {
+htreq_set_header(struct htreq *req, const char *name, const char *val) {
   struct evkeyvalq *headers = evhttp_request_get_output_headers(req->evrequest);
-  // TODO: File mime type detection.
-  evhttp_add_header(headers, "Content-Type", "text/html; charset=UTF-8");
-  evhttp_add_header(headers, "Server", "Hello");
+  evhttp_add_header(headers, name, val);
+}
+
+void
+_htreq_set_headers(struct htreq *req) {
+  htreq_set_header(req, "Server", "Banana HTML to MUSH gateway");
 }
 
 void
@@ -356,11 +360,34 @@ htreq_not_allowed(struct htreq *req) {
 }
 
 void
-htreq_send(struct htreq *req, const char *body) {
+htreq_send(struct htreq *req, const char *ctype, const char *body) {
   _htreq_set_headers(req);
+  htreq_set_header(req, "Content-Type", ctype);
   struct evbuffer *buffer;
   buffer = evbuffer_new();
   evbuffer_add(buffer, body, strlen(body));
+
+  evhttp_send_reply(req->evrequest, HTTP_OK, "OK", buffer);
+  req->evrequest = NULL;
+  evbuffer_free(buffer);
+  htreq_end(req);
+}
+
+void
+htreq_send_tpl(struct htreq *req, const char *templatename) {
+  char *body, *page;
+
+  _htreq_set_headers(req);
+  htreq_set_header(req, "Content-Type", CTYPE_HTML);
+
+  body = template_eval(templatename, req);
+  htreq_mset(req, HT_TEMPLATE, "layout-body", body, NULL);
+
+  page = template_eval("base.html", req);
+
+  struct evbuffer *buffer;
+  buffer = evbuffer_new();
+  evbuffer_add(buffer, page, strlen(page));
 
   evhttp_send_reply(req->evrequest, HTTP_OK, "OK", buffer);
   req->evrequest = NULL;

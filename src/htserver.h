@@ -44,7 +44,12 @@ void htserver_preprocessor_real(struct htserver *hts, ...);
 typedef void (*freefunc)(void *ptr);
 
 void htreq_next(struct htreq *req);
-void htreq_send(struct htreq *req, const char *body);
+#define CTYPE_HTML "text/html; charset=UTF-8"
+#define CTYPE_TEXT "text/plain; charset=UTF-8"
+#define CTYPE_JSON "application/json"
+
+void htreq_send(struct htreq *req, const char *ctype, const char *body);
+void htreq_send_tpl(struct htreq *req, const char *templatename);
 
 void htreq_not_found(struct htreq *req);
 void htreq_not_allowed(struct htreq *req);

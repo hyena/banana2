@@ -16,6 +16,8 @@ struct citem;
 struct render_item;
 struct citem *template_load(const char *path);
 
+struct config *templatevars = NULL;
+
 typedef void (*renderfunc)(struct htreq *req,
                            struct citem *item,
                            struct render_item ***ri);
@@ -57,7 +59,19 @@ append(struct render_item ***ri, const char *val) {
   (*ri) = &(rn->next);
 }
 
-#define getval(name) (name ? htreq_get(req, HT_TEMPLATE, name) : NULL)
+const char *
+get_name(struct htreq *req, const char *name) {
+  const char *ret = NULL;
+  
+  ret = htreq_get(req, HT_TEMPLATE, name);
+  if (ret) { return ret; }
+
+  ret = conf_get(templatevars, name, NULL);
+  if (ret) { return ret; }
+  return NULL;
+}
+
+#define getval(name) (get_name(req, name))
 
 int
 parse_boolean(const char *val) {
