@@ -16,8 +16,8 @@
 #include <time.h>
 #include <ctype.h>
 #include "banana.h"
-#include "htserver.h"
-#include "logger.h"
+#include "lib/htserver.h"
+#include "lib/logger.h"
 #include "page.h"
 
 MIDDLEWARE(mw_postonly) {

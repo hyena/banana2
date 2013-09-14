@@ -4,12 +4,12 @@
 #ifndef _MY_BANANA_H_
 #define _MY_BANANA_H_
 
-#include "logger.h"
+#include "lib/logger.h"
 // slog() defined in logger.h
-#include "htserver.h"
+#include "lib/htserver.h"
 extern struct htserver *htserver;
 
-#include "config.h"
+#include "lib/config.h"
 #include "bconfig.h"
 
 #define _unused_ __attribute__ ((__unused__))

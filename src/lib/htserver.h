@@ -7,6 +7,7 @@
 #endif
 
 #include <sys/stat.h>
+#include <lib/mempool.h>
 
 // Libevent header files
 #include <event2/event.h>
@@ -41,32 +42,25 @@ void htserver_preprocessor_real(struct htserver *hts, ...);
             htserver_preprocessor_real(hts, ## args, NULL)
 
 
-typedef void (*freefunc)(void *ptr);
-
 void htreq_next(struct htreq *req);
 #define CTYPE_HTML "text/html; charset=UTF-8"
 #define CTYPE_TEXT "text/plain; charset=UTF-8"
 #define CTYPE_JSON "application/json"
 
-void htreq_send(struct htreq *req, const char *ctype, const char *body);
-void htreq_send_tpl(struct htreq *req, const char *templatename);
+// Template-related functions.
+void htreq_t_add_pool(struct htreq *req, struct _mempool **mp);
+const char *htreq_t_get(struct htreq *req, const char *name);
+const char *htreq_t_sprintf(struct htreq *req, const char *name, const char *format, ...);
+char *      htreq_t_calloc(struct htreq *req, const char *name, int len);
+const char *htreq_t_strdup(struct htreq *req, const char *name, const char *str);
 
+void htreq_t_send(struct htreq *req, const char *templatename);
+
+// Response functions.
+void htreq_send(struct htreq *req, const char *ctype, const char *body);
 void htreq_not_found(struct htreq *req);
 void htreq_not_allowed(struct htreq *req);
 void htreq_read_file(struct htreq *req, const char *path);
-
-extern const char *HT_COOKIE;
-extern const char *HT_INTERNAL;
-extern const char *HT_TEMP;
-extern const char *HT_VAR;
-extern const char *HT_TEMPLATE;
-
-void *htreq_calloc(struct htreq *req, const char *category, const char *name, int size) __attribute_malloc__;
-void *htreq_strdup(struct htreq *req, const char *category, const char *name, const char *val) __attribute_malloc__;
-const char *htreq_sprintf(struct htreq *req, const char *category, const char *name, const char *fmt, ...);
-void  htreq_mset(struct htreq *req, const char *category, const char *name, const void *ptr, freefunc release);
-#define htreq_set(req,cat,name,val) htreq_mset(ret, cat, name, val, NULL)
-const void *htreq_get(struct htreq *req, const char *category, const char *name) __attribute_malloc__;
 
 void htreq_cookie_set(struct htreq *req, const char *name, const char *value, const char *flags);
 

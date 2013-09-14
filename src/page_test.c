@@ -3,7 +3,7 @@
  */
 
 #include "page.h"
-#include "em.h"
+#include "lib/em.h"
 
 PAGE(page_notme, "/notme", mw_session) {
   const char *foo = NULL;
@@ -12,8 +12,8 @@ PAGE(page_notme, "/notme", mw_session) {
   if (foo) {
     slog("Notme session found '%s'", foo);
   }
-  htreq_strdup(req, HT_TEMPLATE, "foo", "Wallaby Jones");
-  htreq_send_tpl(req, "foo.html");
+  htreq_t_strdup(req, "foo", "Wallaby Jones");
+  htreq_t_send(req, "foo.html");
 }
 
 PAGE(page_foo, "/foo", mw_postonly, mw_session) {

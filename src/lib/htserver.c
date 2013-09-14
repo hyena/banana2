@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include "banana.h"
 #include "htserver.h"
+#include "mempool.h"
 #include "page.h"
 #include "logger.h"
 
@@ -23,12 +24,6 @@
 
 #define MAX_HANDLERS 30
 #define SESSION_KEY_LENGTH 30
-
-const char *HT_COOKIE = "cookie";
-const char *HT_INTERNAL = "internal";
-const char *HT_TEMP = "temp";
-const char *HT_TEMPLATE = "template";
-const char *HT_OTHER = "other";
 
 struct _handler {
   const char *path;
@@ -48,14 +43,7 @@ struct htserver {
 };
 
 #define PATH_MAX_LEN 1024
-struct _mempair {
-  const char *category;
-  const char *name;
-  const void *ptr;
-  freefunc release;
-  struct _mempair *next;
-};
-
+#define MAX_TEMPLATE_POOLS 8
 struct htreq {
   char   path[PATH_MAX_LEN];
   struct htserver *htserver;
@@ -67,7 +55,12 @@ struct htreq {
   int    longpoll;
   struct event *evloop;
   const char *uri;
-  struct _mempair *pool;
+  struct {
+    struct _mempool *tvals;
+    struct _mempool *internal;
+    struct _mempool *cookies;
+  } mp;
+  struct _mempool **tpools[MAX_TEMPLATE_POOLS];
   struct ht_session *session;
 };
 
@@ -82,7 +75,7 @@ static struct htreq_list *_htreq_track = NULL;
 void
 track_htreq(struct htreq *req) {
   struct htreq_list *tracker =
-      htreq_calloc(req, HT_INTERNAL, "tracker", sizeof(struct htreq_list));
+      mp_calloc(&(req->mp.internal), "tracker", sizeof(struct htreq_list));
   tracker->req = req;
   tracker->next = _htreq_track;
   tracker->addtime = time(NULL);
@@ -129,16 +122,10 @@ void htreq_next_cb(evutil_socket_t socket _unused_, short flags _unused_, void *
 
 void
 htreq_end(struct htreq *req) {
-  struct _mempair *n;
   untrack_htreq(req);
-  while (req->pool) {
-    n = req->pool;
-    req->pool = n->next;
-    if (n->release) {
-      n->release((void *) n->ptr);
-    }
-    free(n);
-  }
+  mp_free(&req->mp.cookies);
+  mp_free(&req->mp.tvals);
+  mp_free(&req->mp.internal);
   if (req->evrequest) {
     evhttp_request_free(req->evrequest);
   }
@@ -146,56 +133,6 @@ htreq_end(struct htreq *req) {
     event_free(req->evloop);
   }
   free(req);
-}
-
-void *
-htreq_strdup(struct htreq *req, const char *category, const char *name, const char *val) {
-  void *ptr = strdup(val);
-  htreq_mset(req, category, name, ptr, free);
-  return ptr;
-}
-
-const char *
-htreq_sprintf(struct htreq *req, const char *category, const char *name, const char *fmt, ...) {
-  va_list args;
-  char *ptr;
-  va_start(args, fmt);
-  vasprintf(&ptr, fmt, args);
-  va_end(args);
-  htreq_mset(req, category, name, ptr, free);
-  return ptr;
-}
-
-void *
-htreq_calloc(struct htreq *req, const char *category, const char *name, int size) {
-  void *ptr = malloc(size);
-  memset(ptr, 0, size);
-  htreq_mset(req, category, name, ptr, free);
-  return ptr;
-}
-
-void
-htreq_mset(struct htreq *req, const char *category, const char *name, const void *val, freefunc release) {
-  struct _mempair *n = malloc(sizeof(struct _mempair));
-  n->category = category;
-  n->name = name;
-  n->next = req->pool;
-  n->release = release;
-  n->ptr = val;
-  req->pool = n;
-}
-
-const void *
-htreq_get(struct htreq *req, const char *category, const char *name) {
-  struct _mempair *n = req->pool;
-  while (n) {
-    if (n->category && !strcmp(category, n->category) &&
-        n->name && !strcmp(n->name, name)) {
-      return n->ptr;
-    }
-    n = n->next;
-  }
-  return NULL;
 }
 
 void
@@ -245,8 +182,8 @@ _htreq_set_cookies(struct htreq *req) {
       next = strchr(vptr, ';');
       if (next) *(next++) = '\0';
       decoded = evhttp_decode_uri(vptr);
-      nptr = htreq_strdup(req, HT_INTERNAL, "cookiename", nptr);
-      htreq_strdup(req, HT_COOKIE, nptr, decoded);
+      nptr = mp_strdup(&req->mp.internal, "cookiename", nptr);
+      mp_strdup(&req->mp.cookies, nptr, decoded);
       free(decoded);
       nptr = next;
     }
@@ -305,7 +242,7 @@ htreq_check_sessions() {
 }
 
 MIDDLEWARE(mw_session) {
-  const char *cookieval = htreq_get(req, HT_COOKIE, "sess");
+  const char *cookieval = mp_get(&req->mp.cookies, "sess");
   int i;
   time_t expiry = time(NULL) + SESSION_TIMEOUT;
   struct ht_session *hts;
@@ -374,14 +311,14 @@ htreq_send(struct htreq *req, const char *ctype, const char *body) {
 }
 
 void
-htreq_send_tpl(struct htreq *req, const char *templatename) {
+htreq_t_send(struct htreq *req, const char *templatename) {
   const char *body, *page;
 
   _htreq_set_headers(req);
   htreq_set_header(req, "Content-Type", CTYPE_HTML);
 
   body = template_eval(templatename, req);
-  htreq_mset(req, HT_TEMPLATE, "layout-body", body, NULL);
+  mp_set(&req->mp.tvals, "layout-body", body, NULL);
 
   page = template_eval("base.html", req);
 
@@ -394,6 +331,49 @@ htreq_send_tpl(struct htreq *req, const char *templatename) {
   evbuffer_free(buffer);
   htreq_end(req);
 }
+
+void
+htreq_t_add_pool(struct htreq *req, struct _mempool **mp) {
+  int i;
+  for (i=0; i < MAX_TEMPLATE_POOLS; i++) {
+    if (req->tpools[i] == NULL) {
+      req->tpools[i] = mp;
+    }
+  }
+}
+
+const char *
+htreq_t_get(struct htreq *req, const char *name) {
+  int i;
+  const char *ret;
+  for (i=0; i < MAX_TEMPLATE_POOLS; i++) {
+    if (req->tpools[i] == NULL) break;
+    ret = mp_get(req->tpools[i], name);
+    if (ret) return ret;
+  }
+  return NULL;
+}
+
+const char *
+htreq_t_sprintf(struct htreq *req, const char *name, const char *fmt, ...) {
+  const char *ptr;
+  va_list args;
+  va_start(args, fmt);
+  ptr = mp_vsprintf(&req->mp.tvals, name, fmt, args);
+  va_end(args);
+  return ptr;
+}
+
+char *
+htreq_t_calloc(struct htreq *req, const char *name, int len) {
+  return mp_calloc(&req->mp.tvals, name, len);
+}
+
+const char *
+htreq_t_strdup(struct htreq *req, const char *name, const char *str) {
+  return mp_strdup(&req->mp.tvals, name, str);
+}
+
 
 void
 htreq_read_file(struct htreq *req, const char *path) {
@@ -440,6 +420,7 @@ htreq_handle(struct evhttp_request *r, void *arg) {
   req->handler_count = 0;
   req->handler_index = 0;
   req->handler_subindex = 0;
+  htreq_t_add_pool(req, &req->mp.tvals);
   snprintf(req->path, PATH_MAX_LEN, "%s/%s", hts->root, req->uri);
   _htreq_set_cookies(req);
 

@@ -5,3 +5,5 @@ users
 logs
 core
 libevent-2.*
+src/.*.c
+src/.*.h

@@ -3,11 +3,11 @@
  */
 
 #include "banana.h"
-#include "em.h"
-#include "_middleware.h"
-#include "template.h"
+#include "lib/em.h"
+#include ".middleware.h"
+#include "lib/template.h"
 
-#include "_page_gen.h"
+#include ".page_gen.h"
 
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;

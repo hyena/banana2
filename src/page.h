@@ -7,9 +7,9 @@
 #define __attribute_malloc__ __attribute__((__malloc__))
 #endif
 
-#include "htserver.h"
+#include "lib/htserver.h"
 #include "banana.h"
-#include "template.h"
-#include "_middleware.h"
+#include "lib/template.h"
+#include ".middleware.h"
 
 #endif /* _MY_EVHTTPSERVER_H_ */

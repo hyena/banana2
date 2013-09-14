@@ -4,7 +4,7 @@
 #ifndef _MY_BANANACONF_H_
 #define _MY_BANANACONF_H_
 
-#include "config.h"
+#include "lib/config.h"
 extern struct config *bconfig;
 #define bconf_get(name,def) conf_get(bconfig, name, def)
 #define bconf_int(name,def) conf_int(bconfig, name, def)

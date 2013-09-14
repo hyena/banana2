@@ -6,7 +6,7 @@ LIBEV = ./libevent-2.0.21-stable
 
 PROG  = server
 # TODO: Add back in -Werror
-CFLAGS=	-W -Wall -I. -Isrc -pthread -g -ggdb -D_GNU_SOURCE -I $(LIBEV)/include
+CFLAGS=	-W -Wall -I. -Isrc -pthread -g -ggdb -D_GNU_SOURCE -I $(LIBEV)/include -Werror
 LDFLAGS = -lc -ggdb -liconv -L $(LIBEV)/.libs -levent -levent_extra -levent_core -levent_openssl
 
 
@@ -18,48 +18,49 @@ PAGE_FILES = \
     src/page_test.c
 
 C_FILES = \
-    src/htserver.c \
-    src/config.c \
-    src/logger.c \
-    src/em.c \
+    src/lib/mempool.c \
+    src/lib/htserver.c \
+    src/lib/config.c \
+    src/lib/logger.c \
+    src/lib/em.c \
+    src/lib/template.c \
     src/middleware.c \
-    src/template.c \
     src/banana.c \
     $(PAGE_FILES)
 
 # C_FILES = *.c
 O_FILES = $(patsubst src/%.c, build/%.o, $(C_FILES))
 
-GEN_FILES = src/_middleware.h src/_page_defs.h src/_page_gen.h
+GEN_FILES = src/.middleware.h src/.page_defs.h src/.page_gen.h
 
 $(PROG): $(O_FILES)
 	$(CC) $(LDFLAGS) -o $(PROG) $(O_FILES) $(LDFLAGS)
 
 build/%.o: src/%.c
-	@mkdir -p build
+	@mkdir -p build/lib
 	$(CC) -c $(CFLAGS) $< -o $(patsubst src/%.c,build/%.o,$<)
 
 clean:
 	rm $(O_FILES) $(PROG) $(GEN_FILES)
 
-src/_middleware.h: $(PAGE_FILES) src/middleware.c
-	grep -h MIDDLEWARE src/middleware.c $(PAGE_FILES) | perl -pi -e "s/MIDDLEWARE\((.*)\).*/MIDDLEWARE(\1);/" > src/_middleware.h
+src/.middleware.h: $(PAGE_FILES) src/middleware.c
+	grep -h MIDDLEWARE src/middleware.c $(PAGE_FILES) | perl -pi -e "s/MIDDLEWARE\((.*)\).*/MIDDLEWARE(\1);/" > src/.middleware.h
 
-src/page.h: src/_middleware.h
+src/page.h: src/.middleware.h
 	touch src/page.h
 
-src/banana.c: src/_middleware.h
-src/banana.c: src/_page_defs.h
-src/banana.c: src/_page_gen.h
+src/banana.c: src/.middleware.h
+src/banana.c: src/.page_defs.h
+src/banana.c: src/.page_gen.h
 
-src/_page_defs.h: $(PAGE_FILES) src/_middleware.h
-	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((.*)\).*/PAGE(\1);/" > src/_page_defs.h
+src/.page_defs.h: $(PAGE_FILES) src/.middleware.h
+	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((.*)\).*/PAGE(\1);/" > src/.page_defs.h
 
-src/_page_gen.h: $(PAGE_FILES) src/_page_defs.h
-	echo '#include "_page_defs.h"' > src/_page_gen.h
-	echo "void bind_pages() {" >> src/_page_gen.h
-	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((\w+), (.*)\).*/htserver_bind(htserver, \2, \1);/" >> src/_page_gen.h
-	echo "}" >> src/_page_gen.h
+src/.page_gen.h: $(PAGE_FILES) src/.page_defs.h
+	echo '#include "_page_defs.h"' > src/.page_gen.h
+	echo "void bind_pages() {" >> src/.page_gen.h
+	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((\w+), (.*)\).*/htserver_bind(htserver, \2, \1);/" >> src/.page_gen.h
+	echo "}" >> src/.page_gen.h
 
 API_FILES = $(filter api_%.c,$(C_FILES))
 

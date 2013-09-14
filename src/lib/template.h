@@ -5,11 +5,9 @@
 #ifndef _MY_TEMPLATE_H_
 #define _MY_TEMPLATE_H_
 
-#include "htserver.h"
+#include "lib/htserver.h"
 
-// template_find gets full path to a template using req
-// Since user templates override global templates.
-const char *template_find(const char *filename, struct htreq *req);
+// template_find gets full path to a template using lists of mempools.
 const char *template_eval(const char *filename, struct htreq *req);
 void template_cleanup();
 

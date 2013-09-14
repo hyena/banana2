@@ -12,6 +12,8 @@
 #include <ctype.h>
 #include <errno.h>
 
+const char *template_find(const char *filename, struct htreq *req);
+
 struct citem;
 struct render_item;
 struct citem *template_load(const char *path);
@@ -24,6 +26,8 @@ typedef void (*renderfunc)(struct htreq *req,
 #define RENDERER(x) void x(struct htreq *req _unused_, \
                            struct citem *item _unused_, \
                            struct render_item ***ri _unused_)
+
+#define HT_TEMP "template-temp-val"
 
 RENDERER(render_template);
 
@@ -63,7 +67,7 @@ const char *
 get_name(struct htreq *req, const char *name) {
   const char *ret = NULL;
   
-  ret = htreq_get(req, HT_TEMPLATE, name);
+  ret = htreq_t_get(req, name);
   if (ret) { return ret; }
 
   ret = conf_get(templatevars, name, NULL);
@@ -352,13 +356,12 @@ RENDERER(render_template) {
 
 const char *
 template_find(const char *filename, struct htreq *req) {
-  const char *root = htreq_get(req, HT_INTERNAL, "template_path");
+  const char *root = htreq_t_get(req, "template_path");
   const char *ret = NULL;
   struct stat sb;
 
   if (root) {
-    ret = htreq_sprintf(req, HT_TEMP, HT_TEMP,
-                        "%s/%s", root, filename);
+    ret = htreq_t_sprintf(req, HT_TEMP, "%s/%s", root, filename);
     if (stat(ret, &sb) == 0) {
       return ret;
     }
@@ -366,8 +369,7 @@ template_find(const char *filename, struct htreq *req) {
   root = TEMPLATE_ROOT;
 
   if (root) {
-    ret = htreq_sprintf(req, HT_TEMP, HT_TEMP,
-                        "%s/%s", root, filename);
+    ret = htreq_t_sprintf(req, HT_TEMP, "%s/%s", root, filename);
     if (stat(ret, &sb) == 0) {
       return ret;
     }
@@ -383,9 +385,8 @@ template_eval(const char *filename, struct htreq *req) {
   char *ret;
   int len;
   if (!path) {
-    return htreq_sprintf(req, HT_TEMP, HT_TEMP,
-                         "[[Template '%s' cannot be found]]",
-                         filename);
+    return htreq_t_sprintf(req, HT_TEMP, 
+                         "[[Template '%s' cannot be found]]", filename);
   }
   items = template_load(path);
   if (!items) {
@@ -398,7 +399,7 @@ template_eval(const char *filename, struct htreq *req) {
     len += strlen(ri->val);
   }
   len++; // \0;
-  ret = htreq_calloc(req, HT_TEMP, HT_TEMP, len);
+  ret = htreq_t_calloc(req, HT_TEMP, len);
   for (ri = ritems; ri; ri = rn) {
     rn = ri->next;
     strcat(ret, ri->val);
