@@ -11,8 +11,10 @@ PAGE(page_notme, "/notme", mw_session) {
   foo = htreq_session_get(req);
   if (foo) {
     slog("Notme session found '%s'", foo);
+    htreq_t_strdup(req, "foo", foo);
+  } else {
+    htreq_t_strdup(req, "foo", "Nobody knows the trouble I've seen");
   }
-  htreq_t_strdup(req, "foo", "Wallaby Jones");
   htreq_t_send(req, "foo.html");
 }
 

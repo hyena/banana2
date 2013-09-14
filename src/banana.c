@@ -7,7 +7,7 @@
 #include ".middleware.h"
 #include "lib/template.h"
 
-#include ".page_gen.h"
+void bind_pages();
 
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;

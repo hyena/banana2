@@ -26,12 +26,13 @@ C_FILES = \
     src/lib/template.c \
     src/middleware.c \
     src/banana.c \
+    src/.page_gen.c \
     $(PAGE_FILES)
 
 # C_FILES = *.c
 O_FILES = $(patsubst src/%.c, build/%.o, $(C_FILES))
 
-GEN_FILES = src/.middleware.h src/.page_defs.h src/.page_gen.h
+GEN_FILES = src/.middleware.h src/.page_defs.h src/.page_gen.c
 
 $(PROG): $(O_FILES)
 	$(CC) $(LDFLAGS) -o $(PROG) $(O_FILES) $(LDFLAGS)
@@ -51,16 +52,13 @@ src/page.h: src/.middleware.h
 
 src/banana.c: src/.middleware.h
 src/banana.c: src/.page_defs.h
-src/banana.c: src/.page_gen.h
+src/banana.c: src/.page_gen.c
 
 src/.page_defs.h: $(PAGE_FILES) src/.middleware.h
 	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((.*)\).*/PAGE(\1);/" > src/.page_defs.h
 
-src/.page_gen.h: $(PAGE_FILES) src/.page_defs.h
-	echo '#include "_page_defs.h"' > src/.page_gen.h
-	echo "void bind_pages() {" >> src/.page_gen.h
-	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((\w+), (.*)\).*/htserver_bind(htserver, \2, \1);/" >> src/.page_gen.h
-	echo "}" >> src/.page_gen.h
+src/.page_gen.c: $(PAGE_FILES) src/.page_defs.h
+	bash ./tools/gen_pages.sh $(PAGE_FILES) > src/.page_gen.c
 
 API_FILES = $(filter api_%.c,$(C_FILES))
 
