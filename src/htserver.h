@@ -64,9 +64,9 @@ extern const char *HT_TEMPLATE;
 void *htreq_calloc(struct htreq *req, const char *category, const char *name, int size) __attribute_malloc__;
 void *htreq_strdup(struct htreq *req, const char *category, const char *name, const char *val) __attribute_malloc__;
 const char *htreq_sprintf(struct htreq *req, const char *category, const char *name, const char *fmt, ...);
-void  htreq_mset(struct htreq *req, const char *category, const char *name, void *ptr, freefunc release);
+void  htreq_mset(struct htreq *req, const char *category, const char *name, const void *ptr, freefunc release);
 #define htreq_set(req,cat,name,val) htreq_mset(ret, cat, name, val, NULL)
-void *htreq_get(struct htreq *req, const char *category, const char *name) __attribute_malloc__;
+const void *htreq_get(struct htreq *req, const char *category, const char *name) __attribute_malloc__;
 
 void htreq_cookie_set(struct htreq *req, const char *name, const char *value, const char *flags);
 

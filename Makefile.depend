@@ -5,6 +5,8 @@ build/htserver.o: src/logger.h
 build/htserver.o: src/htserver.h
 build/htserver.o: src/config.h
 build/htserver.o: src/bconfig.h
+build/htserver.o: src/page.h
+build/htserver.o: src/template.h
 build/config.o: src/config.h
 build/logger.o: src/logger.h
 build/em.o: src/em.h

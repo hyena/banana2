@@ -51,10 +51,15 @@ src/page.h: src/_middleware.h
 src/banana.c: src/_middleware.h
 src/banana.c: src/_page_defs.h
 src/banana.c: src/_page_gen.h
-src/_page_defs.h: $(PAGE_FILES)
+
+src/_page_defs.h: $(PAGE_FILES) src/_middleware.h
 	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((.*)\).*/PAGE(\1);/" > src/_page_defs.h
-src/_page_gen.h: $(PAGE_FILES)
-	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((\w+), (.*)\).*/htserver_bind(htserver, \2, \1);/" > src/_page_gen.h
+
+src/_page_gen.h: $(PAGE_FILES) src/_page_defs.h
+	echo '#include "_page_defs.h"' > src/_page_gen.h
+	echo "void bind_pages() {" >> src/_page_gen.h
+	grep -h PAGE $(PAGE_FILES) | perl -pi -e "s/PAGE\((\w+), (.*)\).*/htserver_bind(htserver, \2, \1);/" >> src/_page_gen.h
+	echo "}" >> src/_page_gen.h
 
 API_FILES = $(filter api_%.c,$(C_FILES))
 

@@ -7,19 +7,14 @@
 #include "_middleware.h"
 #include "template.h"
 
+#include "_page_gen.h"
+
 struct htserver *htserver = NULL;
 struct config *bconfig = NULL;
 
 void
 banana_quit() {
   em_stop();
-}
-
-#include "_page_defs.h"
-
-void
-bind_pages() {
-#include "_page_gen.h"
 }
 
 int

@@ -51,7 +51,7 @@ struct htserver {
 struct _mempair {
   const char *category;
   const char *name;
-  void *ptr;
+  const void *ptr;
   freefunc release;
   struct _mempair *next;
 };
@@ -135,7 +135,7 @@ htreq_end(struct htreq *req) {
     n = req->pool;
     req->pool = n->next;
     if (n->release) {
-      n->release(n->ptr);
+      n->release((void *) n->ptr);
     }
     free(n);
   }
@@ -175,7 +175,7 @@ htreq_calloc(struct htreq *req, const char *category, const char *name, int size
 }
 
 void
-htreq_mset(struct htreq *req, const char *category, const char *name, void *val, freefunc release) {
+htreq_mset(struct htreq *req, const char *category, const char *name, const void *val, freefunc release) {
   struct _mempair *n = malloc(sizeof(struct _mempair));
   n->category = category;
   n->name = name;
@@ -185,7 +185,7 @@ htreq_mset(struct htreq *req, const char *category, const char *name, void *val,
   req->pool = n;
 }
 
-void *
+const void *
 htreq_get(struct htreq *req, const char *category, const char *name) {
   struct _mempair *n = req->pool;
   while (n) {
@@ -375,7 +375,7 @@ htreq_send(struct htreq *req, const char *ctype, const char *body) {
 
 void
 htreq_send_tpl(struct htreq *req, const char *templatename) {
-  char *body, *page;
+  const char *body, *page;
 
   _htreq_set_headers(req);
   htreq_set_header(req, "Content-Type", CTYPE_HTML);
