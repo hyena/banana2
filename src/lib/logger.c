@@ -10,7 +10,6 @@
 #include <string.h>
 #include <time.h>
 #include <stdarg.h>
-#include <pthread.h>
 #include <limits.h>
 #include <ctype.h>
 #include <errno.h>
@@ -32,14 +31,10 @@ struct logger {
   // Date string.
   struct tm logday;
 
-  // So we don't have overlapping logs.
-  pthread_mutex_t logmutex;
-
   // TODO: Allowing users to rotate logs based on their timezone,
   //       not forcing all to use central time.
 };
 
-pthread_mutexattr_t pth_recurse;
 static Logger *syslogger;
 
 static int
@@ -83,7 +78,6 @@ logger_new(const char *logname) {
   strftime(timebuff, 20, "%F", &logger->logday);
   logger->datestr = strdup(timebuff);
 
-  pthread_mutex_init(&logger->logmutex, &pth_recurse);
   logger->logout = NULL;
 
   llog(logger, "-- LOG STARTED --");
@@ -101,7 +95,6 @@ logger_free(Logger *logger) {
 
   free(logger->logname);
   free(logger->datestr);
-  pthread_mutex_destroy(&logger->logmutex);
 }
 
 void
@@ -121,7 +114,6 @@ vllog(Logger *logger, const char *fmt, va_list args) {
   int  logrollover = 0;
 
   // Lock up.
-  pthread_mutex_lock(&logger->logmutex);
 
   now = time(NULL);
   localtime_r(&now, &today);
@@ -151,17 +143,14 @@ vllog(Logger *logger, const char *fmt, va_list args) {
     // If it was unable to initialize: Panic.
     if (logger->logout == NULL) {
       if (syslogger && logger != syslogger) {
-        pthread_mutex_lock(&syslogger->logmutex);
         slog("Logging error: Unable to open '%s'!\n", filename);
         strerror_r(errno, filename, 100);
         slog("Logging error: %s\n", filename);
-        pthread_mutex_unlock(&syslogger->logmutex);
       } else {
         printf("Logging error: Unable to open '%s'!\n", filename);
         strerror_r(errno, filename, 100);
         printf("Logging error: %s\n", filename);
       }
-      pthread_mutex_unlock(&logger->logmutex);
       return;
     }
     if (logrollover) {
@@ -177,13 +166,10 @@ vllog(Logger *logger, const char *fmt, va_list args) {
   fprintf(logger->logout, "\n");
   fflush(logger->logout);
 
-  pthread_mutex_unlock(&logger->logmutex);
 }
 
 void
 logger_init(const char *logpath) {
-  pthread_mutexattr_init(&pth_recurse);
-  pthread_mutexattr_settype(&pth_recurse, PTHREAD_MUTEX_RECURSIVE);
   syslogger = logger_new(logpath);
 }
 
@@ -200,7 +186,6 @@ void
 slog(const char *fmt, ...) {
   va_list args;
   if (syslogger) {
-    pthread_mutex_lock(&syslogger->logmutex);
   }
   va_start(args, fmt);
   vllog(syslogger, fmt, args);
@@ -218,6 +203,5 @@ slog(const char *fmt, ...) {
     }
   }
   if (syslogger) {
-    pthread_mutex_unlock(&syslogger->logmutex);
   }
 }
