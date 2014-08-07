@@ -27,3 +27,11 @@ MIDDLEWARE(mw_postonly) {
     htreq_not_allowed(req);
   }
 }
+
+MIDDLEWARE(mw_getonly) {
+  if (htreq_ev(req)->type == EVHTTP_REQ_GET) {
+    htreq_next(req);
+  } else {
+    htreq_not_allowed(req);
+  }
+}

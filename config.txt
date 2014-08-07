@@ -3,3 +3,4 @@ listen_port: 4088
 http_signature: Banana MUSH Client
 file_root: public
 template_vars: tvars.txt
+user_dir: users

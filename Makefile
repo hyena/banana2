@@ -15,7 +15,7 @@ all: $(PROG)
 include Makefile.depend
 
 PAGE_FILES = \
-    src/page_test.c
+    src/page_user.c
 
 C_FILES = \
     src/lib/mempool.c \
@@ -26,6 +26,7 @@ C_FILES = \
     src/lib/template.c \
     src/middleware.c \
     src/banana.c \
+    src/user.c \
     src/.page_gen.c \
     $(PAGE_FILES)
 

@@ -1,3 +1,17 @@
 This is a rewrite, from the ground up, of Banana Mu-client, using libevent2.
 
-It will be single threaded, and somewhat more dynamic than banana-muclient.
+It is single threaded, and somewhat more solid than banana-muclient. Also
+supports templates, making it a bit more dynamic in usage.
+
+To compile:
+
+1) If iconv is not available on your system or is incompatible:
+$ make iconv
+
+2) If libevent2 is not available on your system or is incompatible:
+$ make libevent2
+
+3) Compile server
+$ make
+
+4) Run it!
